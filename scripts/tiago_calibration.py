@@ -10,25 +10,18 @@ from pinocchio.utils import *
 from sys import argv
 import os
 from os.path import dirname, join, abspath
-import time
 
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 import numpy as np
-from numpy.linalg import norm, solve
-from scipy import linalg, signal
 
 import pandas as pd
-import json
 import csv
 
 from tools.robot import Robot
-from tools.regressor import *
-from tools.qrdecomposition import *
-from tools.randomdata import *
-from tools.robotcollisions import *
-
+from tools.regressor import eliminate_non_dynaffect
+from tools.qrdecomposition import get_baseParams, cond_num
 
 """
 # load robot
@@ -51,11 +44,8 @@ robot = Robot(
     "tiago_description/robots",
     "tiago_no_hand_mod.urdf"
 )
-print(robot.model)
-
 
 # create a dictionary of geometric parameters errors
-
 """
 kinematic tree:
 1: base -> torso->arm
@@ -63,7 +53,6 @@ kinematic tree:
 3: base -> wheels
 for now, we only care about branch 1
 """
-
 joint_names = [
     "torso_lift_joint",
     "arm_1_joint",
@@ -88,19 +77,29 @@ for i in range(len(joint_names)):
     for j in tpl_names:
         geo_params.append(j + ("_%d" % i))
     joint_off.append("off" + "_%d" % i)
+phi_jo = [0] * len(joint_off)
+phi_gp = [0] * len(geo_params)
+
+joint_off = dict(zip(joint_off, phi_jo))
+geo_params = dict(zip(geo_params, phi_gp))
+
+# # read data from csv file
+# folder = dirname(dirname(str(abspath(__file__))))
+# file_name = join(folder, 'out_15.csv') 
+# q_sample = pd.read_csv(file_name).to_numpy()
+# nsample = q_sample.shape[0]
 
 # generate data points and regressors
 ID_e = robot.model.getFrameId("ee_marker_joint")
 nsample = 100
-
-#  jacobian matrix J - only to  offsets ( = robot.model.nv)
-#  kinematic regressor R - to  all 6-component parameters
 
 ######################################
 J = np.empty([6*nsample, robot.model.nv])
 R = np.empty([6*nsample, 6*robot.model.nv])
 for i in range(nsample):
     q = pin.randomConfiguration(robot.model)
+    # q = q_sample[i, :]
+    q[8:] = robot.q0[8:]
     pin.framesForwardKinematics(robot.model, robot.data, q)
     pin.updateFramePlacements(robot.model, robot.data)
 
@@ -112,133 +111,44 @@ for i in range(nsample):
         J[nsample*j + i, :] = fj[j, :]
         R[nsample*j + i, :] = kfr[j, :]
 
+# plotting
 plot1 = plt.figure()
 axs = plot1.subplots(6, 1)
 ylabel = ["px", "py", "pz", "phix", "phiy", "phiz"]
 for j in range(6):
     axs[j].plot(R[nsample*j:nsample*j+nsample, 17])
     axs[j].set_ylabel(ylabel[j])
+# plt.show()
 
 ###########FrameJacobian###########################
 # eliminate zero columns
-col_norm = np.diag(np.dot(J.T, J))
+J_e, params_r = eliminate_non_dynaffect(J, joint_off, tol_e=1e-6)
 
-joint_offe = []
-joint_offr = []
-for i in range(col_norm.shape[0]):
-    if col_norm[i] < 1e-6:
-        joint_offe.append(i)
-    else:
-        joint_offr.append(joint_off[i])
-J_e = np.delete(J, joint_offe, 1)
+# get base parameters
+J_b, params_base = get_baseParams(J_e, params_r)
 
-# apply qr decomposition to find independent columns and regrouping
-q, r = np.linalg.qr(J_e)
-
-idx_base = []
-idx_regroup = []
-
-for i in range(r.shape[1]):
-    if abs(np.diag(r)[i]) > 1e-6:
-        idx_base.append(i)
-    else:
-        idx_regroup.append(i)
-
-
-# identifiable parameters expression
-
-
-##############FrameKinematicRegressor########################
+###########FrameKinematicRegressor#################
 # select columns correspond to joint offset
 joint_idx = [2, 11, 17, 23, 29, 35, 41, 47, 48, 49,
              50, 51, 52, 53]  # all on z axis - checked!!
+
+# regressor matrix on selected paramters
 R_sel = R[:, joint_idx]
-geo_params_sel = [geo_params[i] for i in joint_idx]
-print(R_sel.shape)
+
+# a dictionary of selected parameters
+gp_listItems = list(geo_params.items())
+geo_params_sel = []
+for i in joint_idx:
+    geo_params_sel.append(gp_listItems[i])
+geo_params_sel = dict(geo_params_sel)
+
 # eliminate zero columns
-col_norm = np.diag(np.dot(R_sel.T, R_sel))
+R_e, geo_paramsr = eliminate_non_dynaffect(R_sel, geo_params_sel, tol_e=1e-6)
 
-geo_paramse = []
-geo_paramsr = []
-for i in range(col_norm.shape[0]):
-    if col_norm[i] < 1e-2:
-        geo_paramse.append(i)
-    else:
-        geo_paramsr.append(geo_params_sel[i])
-# R_e = np.delete(R_sel, geo_paramse, 1)
-geo_paramsr = geo_params_sel
-R_e = R_sel
-print(R_e.shape)
-
-# apply qr decomposition to find independent columns and regrouping
-q, r = np.linalg.qr(R_e)
-
-idx_base = []
-idx_regroup = []
-
-for i in range(r.shape[1]):
-    if abs(np.diag(r)[i]) > 1e-6:
-        idx_base.append(i)
-    else:
-        idx_regroup.append(i)
-rank_Re = len(idx_base)
-print(rank_Re)
-
-
-# identifiable parameters expression
-R1 = np.zeros([R_e.shape[0], len(idx_base)])
-R2 = np.zeros([R_e.shape[0], len(idx_regroup)])
-params_base = []
-params_regroup = []
-for i in range(len(idx_base)):
-    R1[:, i] = R_e[:, idx_base[i]]
-    params_base.append(geo_paramsr[idx_base[i]])
-for j in range(len(idx_regroup)):
-    R2[:, j] = R_e[:, idx_regroup[j]]
-    params_regroup.append(geo_paramsr[idx_regroup[j]])
-new_Re = np.c_[R1, R2]
-print(new_Re.shape)
-# second time qr decomposition
-
-new_q, new_r = np.linalg.qr(new_Re)
-new_R1 = new_r[0: rank_Re, 0: rank_Re]
-new_Q1 = new_q[:, 0: rank_Re]
-new_R2 = new_r[0: rank_Re, rank_Re: new_r.shape[1]]
-
-new_Rbase = np.dot(new_Q1, new_R1)
-print("condition number: ", np.linalg.cond(new_Rbase))
-
-beta = np.around(np.dot(np.linalg.inv(new_R1), new_R2), 6)
-
-tol_beta = 1e-10
-
-for i in range(rank_Re):
-    for j in range(beta.shape[1]):
-        if abs(beta[i, j]) < tol_beta:
-
-            params_base[i] = params_base[i]
-
-        elif beta[i, j] < -tol_beta:
-
-            params_base[i] = (
-                params_base[i]
-                + " - "
-                + str(abs(beta[i, j]))
-                + "*"
-                + str(params_regroup[j])
-            )
-
-        else:
-
-            params_base[i] = (
-                params_base[i]
-                + " + "
-                + str(abs(beta[i, j]))
-                + "*"
-                + str(params_regroup[j])
-            )
-print(params_base)
-plt.show()
+# get base parameters
+R_b, params_base = get_baseParams(R_e, geo_paramsr)
+print("base parameters: ", (params_base))
+print("condition number: ", cond_num(R_b))
 
 
 # add a marker at the ee
