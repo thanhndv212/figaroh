@@ -70,9 +70,10 @@ def build_regressor_full_modified(model, data, N, nq, nv, njoints, q, v, a):
     W = np.zeros([N * nv, 10 * nv + 2 * nv + nv + nv])
 
     for i in range(N):
-        W_temp = pin.computeJointTorqueRegressor(model, data, q[i, :], v[i, :], a[i, :])
+        W_temp = pin.computeJointTorqueRegressor(
+            model, data, q[i, :], v[i, :], a[i, :])
         for j in range(W_temp.shape[0]):
-            W[j * N + i, 0 : 10 * nv] = W_temp[j, :]
+            W[j * N + i, 0: 10 * nv] = W_temp[j, :]
             W[j * N + i, 10 * nv + 2 * j] = v[i, j]  # fv
             W[j * N + i, 10 * nv + 2 * j + 1] = np.sign(v[i, j])  # fs
             W[j * N + i, 10 * nv + 2 * nv + j] = a[i, j]  # ia
@@ -131,7 +132,7 @@ def add_coupling(W, model, data, N, nq, nv, njoints, q, v, a):
     return W
 
 
-def eliminate_non_dynaffect(W, params_std, tol_e):
+def eliminate_non_dynaffect(W, params_std, tol_e=1e-6):
     """This function eliminates columns which has L2 norm smaller than tolerance.
     Input:  W: (ndarray) joint torque regressor
             params_std: (dict) standard parameters
@@ -150,7 +151,7 @@ def eliminate_non_dynaffect(W, params_std, tol_e):
             params_r.append(list(params_std.keys())[i])
     idx_e = tuple(idx_e)
     W_e = np.delete(W, idx_e, 1)
-    return W_e, idx_e, params_r
+    return W_e, params_r
 
 
 def get_index_eliminate(W, params_std, tol_e):
