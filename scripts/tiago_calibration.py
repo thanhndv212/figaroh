@@ -1,11 +1,6 @@
-from numpy.core.arrayprint import DatetimeFormat
-from datetime import datetime
-from numpy.core.fromnumeric import shape
 import pinocchio as pin
 from pinocchio.robot_wrapper import RobotWrapper
-from pinocchio.visualize import GepettoVisualizer, MeshcatVisualizer
 from pinocchio.utils import *
-# from pinocchio.pinocchio_pywrap import rpy
 
 from sys import argv
 import os
@@ -15,7 +10,6 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 import numpy as np
-
 import pandas as pd
 import csv
 
@@ -53,42 +47,43 @@ kinematic tree:
 3: base -> wheels
 for now, we only care about branch 1
 """
-joint_names = [
-    "torso_lift_joint",
-    "arm_1_joint",
-    "arm_2_joint",
-    "arm_3_joint",
-    "arm_4_joint",
-    "arm_5_joint",
-    "arm_6_joint",
-    "arm_7_joint",
-    "head_1_joint",
-    "head_2_joint",
-    "wheel_left_joint",
-    "wheel_right_joint",
-    "ee_marker_joint"]
 
-tpl_names = ["d_px", "d_py", "d_pz", "d_phix", "d_phiy", "d_phiz"]
+joint_names = [name for i, name in enumerate(robot.model.names)]
 
-geo_params = []
-joint_off = []
 
-for i in range(len(joint_names)):
-    for j in tpl_names:
-        geo_params.append(j + ("_%d" % i))
-    joint_off.append("off" + "_%d" % i)
-phi_jo = [0] * len(joint_off)
-phi_gp = [0] * len(geo_params)
+def get_geoOffset(joint_names):
+    tpl_names = ["d_px", "d_py", "d_pz", "d_phix", "d_phiy", "d_phiz"]
 
-joint_off = dict(zip(joint_off, phi_jo))
-geo_params = dict(zip(geo_params, phi_gp))
+    geo_params = []
+
+    for i in range(len(joint_names)):
+        for j in tpl_names:
+            geo_params.append(j + ("_%d" % i))
+    phi_gp = [0] * len(geo_params)
+
+    geo_params = dict(zip(geo_params, phi_gp))
+
+    return geo_params
+
+
+def get_jointOffset(joint_names):
+    joint_off = []
+    for i in range(len(joint_names)):
+        joint_off.append("off" + "_%d" % i)
+
+    phi_jo = [0] * len(joint_off)
+    joint_off = dict(zip(joint_off, phi_jo))
+    return joint_off
+
 
 # # read data from csv file
 # folder = dirname(dirname(str(abspath(__file__))))
-# file_name = join(folder, 'out_15.csv') 
+# file_name = join(folder, 'out_15.csv')
 # q_sample = pd.read_csv(file_name).to_numpy()
 # nsample = q_sample.shape[0]
 
+geo_params = get_geoOffset(joint_names)
+joint_off = get_jointOffset(joint_names)
 # generate data points and regressors
 ID_e = robot.model.getFrameId("ee_marker_joint")
 nsample = 100
@@ -149,6 +144,7 @@ R_e, geo_paramsr = eliminate_non_dynaffect(R_sel, geo_params_sel, tol_e=1e-6)
 R_b, params_base = get_baseParams(R_e, geo_paramsr)
 print("base parameters: ", (params_base))
 print("condition number: ", cond_num(R_b))
+
 
 
 # add a marker at the ee
