@@ -40,13 +40,14 @@ from tiago_mocap_calib_fun_def import *
 
 # identifiable parameters expressions
 """
+
+
 def main():
 
     NbGrid = 2
     NbSample = pow(NbGrid, 3)
-    #NbSample=2
-    Nq=8 #number of joints to be optimized
-
+    # NbSample=2
+    Nq = 8  # number of joints to be optimized
 
     # load robot
     robot = Robot(
@@ -54,22 +55,19 @@ def main():
         "tiago_no_hand_mod.urdf"
     )
 
-
     data = robot.model.createData()
     model = robot.model
 
-                   
-    
     # create a dictionary of geometric parameters errors
     joint_names = []
     for i, name in enumerate(model.names):
-            joint_names+=[name]
-    
-    joint_names=joint_names[0:-4] # remove the head and wheels joint 
+        joint_names += [name]
+
+    joint_names = joint_names[0:-4]  # remove the head and wheels joint
 
     tpl_names = ["d_px", "d_py", "d_pz", "d_phix", "d_phiy", "d_phiz"]
 
-    geo_params =joint_off= []
+    geo_params = joint_off = []
     for i in range(len(joint_names)):
         for j in tpl_names:
             geo_params.append(j + ("_%d" % i))
@@ -80,12 +78,8 @@ def main():
     joint_off = dict(zip(joint_off, phi_jo))
     geo_params = dict(zip(geo_params, phi_gp))
 
-
     IDX_TOOL = model.getFrameId("ee_marker_joint")
-    
 
-
-    
     # Use a dictionnary to store most of the non model related parameters
     # eps is the tolerance on the desired end effector 3D position accuracy
     # Ind_joint index of the joint that sould be modified for/by the calibration process
@@ -97,45 +91,7 @@ def main():
         'Ind_joint': np.arange(8),
         'PLOT': 0,
     }
-    '''
-    
-    # # read data from csv file
-    # folder = dirname(dirname(str(abspath(__file__))))
-    # file_name = join(folder, 'out_15.csv') 
-    # q_sample = pd.read_csv(file_name).to_numpy()
-    # NbSample = q_sample.shape[0]
 
-    # generate data points and regressors
-    
-    
-    R,J=Calculate_identifiable_kinematics_model([], model, data, param)
-
-
-    ###########FrameKinematicRegressor#################
-    # select columns correspond to joint offset
-    joint_idx = [2, 11, 17, 23, 29, 35, 41, 47, 48, 49,
-             50, 51, 52, 53]  # all on z axis - checked!!
-
-    # regressor matrix on selected paramters
-    R_sel = R[:, joint_idx]
-
-    # a dictionary of selected parameters
-    gp_listItems = list(geo_params.items())
-    geo_params_sel = []
-    for i in joint_idx:
-        geo_params_sel.append(gp_listItems[i])
-    geo_params_sel = dict(geo_params_sel)
-
-    # eliminate zero columns
-    R_e, geo_paramsr = eliminate_non_dynaffect(R_sel, geo_params_sel, tol_e=1e-6)
-
-    # get base parameters
-    R_b, params_base = get_baseParams(R_e, geo_paramsr)
-    print("base parameters: ", (params_base))
-    print("condition number: ", cond_num(R_b))
-    '''
-
-    
     # Generate feasible joint configuration
     '''
     cube_pose=[0.5, 0.1, 0.5]# position of the cube
@@ -148,11 +104,6 @@ def main():
         cube_pose[2]+cube_dim[2]/2, cube_pose[2]+cube_dim[2]/2, NbSample))
  
     '''
-   
-    
-
-
-   
 
     cube_pose = [0.5, 0.1, 0.5]  # position of the cube
     cube_pose[len(cube_pose):] = [0, 0, 0, 1]  # orientation of the cube
@@ -176,14 +127,13 @@ def main():
     ax = plt.axes(projection="3d")
     ax.scatter3D(PEEd_2d[0, :], PEEd_2d[1, :], PEEd_2d[2, :], color="green")
     plt.title("simple 3D scatter plot")
-    #plt.show()
+    # plt.show()
 
     PEEd = PEEd_2d.flatten('C')
     print(PEEd)
-    param['PEEd']= PEEd
-    param['eps_gradient']=1e-6
+    param['PEEd'] = PEEd
+    param['eps_gradient'] = 1e-6
 
-    
     # set initial conditions and joint limits
     lb = ub = x0 = []
     for j in range(len(param['Ind_joint'])):
@@ -193,7 +143,7 @@ def main():
             x0 = np.append(
                 x0, (model.lowerPositionLimit[j]+model.upperPositionLimit[j])/2)
     starttime = time.time()
-
+    q = []
     for iter in range(NbSample):
 
         param['iter'] = iter+1
@@ -223,83 +173,40 @@ def main():
         #starttime = time.time()
         x_opt, info = nlp.solve(x0)
         #print('That took {} seconds'.format(time.time() - starttime))
-         
+
         q_opt = np.array(robot.q0)  # np.zeros(shape=(12, 1))
 
         PEEe = []
         for j in range(1):
-            q_opt[0:8] = x_opt 
-             
-            pin.forwardKinematics( model,  data, q_opt)
-            pin.updateFramePlacements( model,  data)
-            
+            q_opt[0:8] = x_opt
+
+            pin.forwardKinematics(model,  data, q_opt)
+            pin.updateFramePlacements(model,  data)
+
             #Calculate_kinematics_model(q_opt, model, data, IDX_TOOL)
             PEEe = np.array(data.oMf[IDX_TOOL].translation)
-             
 
         PEEd_iter = PEEd[[param['iter']-1, NbSample +
                           param['iter']-1, 2*NbSample+param['iter']-1]]
-            
+
         J = np.sum(np.sqrt(np.square(PEEd_iter-PEEe)))/3
         if J <= 1e-3:
             print("Iter {} success ".format(iter+1))
+            q = np.append(q, q_opt)
         else:
             print("Iter {} Desired end-effector position: {} ".format(iter+1, PEEd_iter))
             print("Iter {} Achieved end-effector position: {} ".format(iter+1, PEEe))
 
     # PLEASE THANH COMPLETE THE CODE HERE TO calulate the condition number of the base regressor matrix using x_opt
+    q = np.reshape(q, (NbSample, model.nq), order='C')
+    R_b, params_baseR, J_b, params_baseJ = Calculate_identifiable_kinematics_model(
+        q, model, data, param)
 
-    '''
-    R,J=Calculate_identifiable_kinematics_model([], model, data, param)
+    # condition number
 
-
-    # select columns correspond to joint offset
-    joint_idx = [2, 11, 17, 23, 29, 35, 41, 47, 48, 49,
-             50, 51, 52, 53]  # all on z axis - checked!!
-
-    # regressor matrix on selected paramters
-    R_sel = R[:, joint_idx]
-
-    # a dictionary of selected parameters
-    gp_listItems = list(geo_params.items())
-    geo_params_sel = []
-    for i in joint_idx:
-        geo_params_sel.append(gp_listItems[i])
-    geo_params_sel = dict(geo_params_sel)
-
-    # eliminate zero columns
-    R_e, geo_paramsr = eliminate_non_dynaffect(R_sel, geo_params_sel, tol_e=1e-6)
-
-    # get base parameters
-    R_b, params_base = get_baseParams(R_e, geo_paramsr)
-    print("base parameters: ", (params_base))
-    print("condition number: ", cond_num(R_b))
-'''
-
-     
+    cond_R = cond_num(R_b)
+    cond_J = cond_num(J_b)
+    print(cond_R, cond_J)
 
 if __name__ == "__main__":
     main()
-
-
-
-# add a marker at the ee
-# name = "ee_marker_frame"
-# parent_joint = model.getJointId("arm_7_joint")
-# prev_frame = model.getFrameId("arm_7_joint")
-# placement = pin.SE3(eye(3), zero(3) + 0.1)
-# inertia = pin.Inertia.Zero()
-# frame = pin.Frame(name, parent_joint, prev_frame,
-#                   placement, pin.FIXED_JOINT, inertia)
-# model.addFrame(frame)
-# jointName = "ee_marker_joint"
-# jointPlacement = pin.SE3(eye(3), zero(3) + 0.1)
-# jointId = model.getJointId("arm_7_joint")
-# model.addJoint(jointId, pin.JointModelRZ(),
-#                      jointPlacement, jointName)
-# # inertia = pin.Inertia.Zero()
-# # model.appendBodyToJoint(jointId, inertia, pin.SE3.Identity())
-# model.lowerPositionLimit[14] = -1.5
-# model.upperPositionLimit[14] = 1.5
-# model.velocityLimit[12] = 1.5
-# model.effortLimit[12] = 1.5
