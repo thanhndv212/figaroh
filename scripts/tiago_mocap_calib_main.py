@@ -23,7 +23,7 @@ from tools.robot import Robot
 from tools.regressor import eliminate_non_dynaffect
 from tools.qrdecomposition import get_baseParams, cond_num
 
-from Tiago_mocap_calib_fun_def import *
+from tiago_mocap_calib_fun_def import *
 
 """
 # load robot
@@ -176,21 +176,20 @@ def main():
     ax = plt.axes(projection="3d")
     ax.scatter3D(PEEd_2d[0, :], PEEd_2d[1, :], PEEd_2d[2, :], color="green")
     plt.title("simple 3D scatter plot")
-    plt.show()
+    #plt.show()
 
     PEEd = PEEd_2d.flatten('C')
     print(PEEd)
     param['PEEd']= PEEd
     param['eps_gradient']=1e-6
 
-    '''
+    
     # set initial conditions and joint limits
     lb = ub = x0 = []
     for j in range(len(param['Ind_joint'])):
         for i in range(1):
             lb = np.append(lb, model.lowerPositionLimit[j])
             ub = np.append(ub, model.upperPositionLimit[j])
-            # np.append(x0,(model.lowerPositionLimit[j]+model.upperPositionLimit[j])/2)#np.append(x0,j)#
             x0 = np.append(
                 x0, (model.lowerPositionLimit[j]+model.upperPositionLimit[j])/2)
     starttime = time.time()
@@ -247,9 +246,35 @@ def main():
         else:
             print("Iter {} Desired end-effector position: {} ".format(iter+1, PEEd_iter))
             print("Iter {} Achieved end-effector position: {} ".format(iter+1, PEEe))
+
+    # PLEASE THANH COMPLETE THE CODE HERE TO calulate the condition number of the base regressor matrix using x_opt
+
+    '''
+    R,J=Calculate_identifiable_kinematics_model([], model, data, param)
+
+
+    # select columns correspond to joint offset
+    joint_idx = [2, 11, 17, 23, 29, 35, 41, 47, 48, 49,
+             50, 51, 52, 53]  # all on z axis - checked!!
+
+    # regressor matrix on selected paramters
+    R_sel = R[:, joint_idx]
+
+    # a dictionary of selected parameters
+    gp_listItems = list(geo_params.items())
+    geo_params_sel = []
+    for i in joint_idx:
+        geo_params_sel.append(gp_listItems[i])
+    geo_params_sel = dict(geo_params_sel)
+
+    # eliminate zero columns
+    R_e, geo_paramsr = eliminate_non_dynaffect(R_sel, geo_params_sel, tol_e=1e-6)
+
+    # get base parameters
+    R_b, params_base = get_baseParams(R_e, geo_paramsr)
+    print("base parameters: ", (params_base))
+    print("condition number: ", cond_num(R_b))
 '''
-
-
 
      
 
