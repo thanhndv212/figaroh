@@ -30,10 +30,7 @@ robot = Robot(
     "tiago_no_hand_mod.urdf"
 )
 model = robot.model
-print(model)
 data = robot.data
-id = model.getFrameId('torso_lift_joint')
-print(data.oMf[id])
 
 joint_names = [name for i, name in enumerate(model.names)]
 geo_params = get_geoOffset(joint_names)
@@ -120,7 +117,7 @@ eps = 1e-3  # threshold for delta_X
 PEEe = get_PEE(offset_0, q, model, data, param, noise=False)
 delta_X = PEEm - PEEe
 delta_p = np.dot(np.linalg.pinv(J_b), delta_X)
-print("iteration 1: ", delta_p)
+# print("iteration 1: ", delta_p)
 iter = 1
 
 
@@ -138,7 +135,6 @@ while np.linalg.norm(delta_X) > eps and iter < 10:
     # update regressor
     _, _, J_b_update, _ = Calculate_identifiable_kinematics_model(
         q_update, model, data, param)
-    print(data.oMf[id])
 
     delta_p = np.dot(np.linalg.pinv(J_b_update), delta_X)
     # print("iteration %d: " % iter, delta_p)
