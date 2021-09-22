@@ -40,7 +40,7 @@ def get_jointOffset(joint_names):
     for i in range(len(joint_names)):
         joint_off.append("off" + "_%d" % i)
 
-    phi_jo = [0] * len(joint_off)
+    phi_jo = [0] * len(joint_off) #default zero values
     joint_off = dict(zip(joint_off, phi_jo))
     return joint_off
 
@@ -53,10 +53,31 @@ def get_geoOffset(joint_names):
         for j in tpl_names:
             geo_params.append(j + ("_%d" % i))
 
-    phi_gp = [0] * len(geo_params)
+    phi_gp = [0] * len(geo_params) #default zero values
     geo_params = dict(zip(geo_params, phi_gp))
     return geo_params
 
+def get_PEE(offset_var, q, model, data, param, noise=False):
+    # calibration index = 3 or 6, indicating whether or not orientation incld.
+    nrow = param['calibration_index']
+    ncol = param['NbSample']
+    PEE = np.empty((nrow, ncol))
+    for i in range(ncol):
+        q[i, 0:8] = q[i, 0:8] + offset_var
+
+        # adding zero mean additive noise to simulated measured coordinates
+        if noise:
+            noise = np.random.normal(0, 0.001, offset_var.shape)
+            q[i, 0:8] = q[i, 0:8] + noise
+
+        pin.framesForwardKinematics(model, data, q[i, :])
+        pin.updateFramePlacements(model, data)
+        PEE[0:3, i] = data.oMf[param['IDX_TOOL']].translation
+        if nrow == 6:
+            PEE_rot = oMf[param['IDX_TOOL']].rotation
+            PEE[3:6, i] = pin.rpy.matrixToRpy(PEE_rot)
+    PEE = PEE.flatten('C')
+    return PEE
 
 def Calculate_kinematics_model(q_i, model, data, IDX_TOOL):
 
@@ -81,8 +102,9 @@ def Calculate_identifiable_kinematics_model(q, model, data, param):
         MIN_MODEL = 1
 
     # obtain aggreated Jacobian matrix J and kinematic regressor R
-    J = np.empty([6*param['NbSample'], model.nv])
-    R = np.empty([6*param['NbSample'], 6*model.nv])
+    calib_idx = param['calibration_index']
+    J = np.empty([calib_idx*param['NbSample'], model.nv])
+    R = np.empty([calib_idx*param['NbSample'], 6*model.nv])
     for i in range(param['NbSample']):
         if MIN_MODEL == 1:
             q_i = pin.randomConfiguration(model)
@@ -93,7 +115,7 @@ def Calculate_identifiable_kinematics_model(q, model, data, param):
 
         model, data, Ri, Ji = Calculate_kinematics_model(
             q_i, model, data, param['IDX_TOOL'])
-        for j in range(6):
+        for j in range(calib_idx):
             J[param['NbSample']*j + i, :] = Ji[j, :]
             R[param['NbSample']*j + i, :] = Ri[j, :]
 

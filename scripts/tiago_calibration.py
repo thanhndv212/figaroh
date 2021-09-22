@@ -53,21 +53,20 @@ joint_names = [name for i, name in enumerate(robot.model.names)]
 
 def get_geoOffset(joint_names):
     tpl_names = ["d_px", "d_py", "d_pz", "d_phix", "d_phiy", "d_phiz"]
-
     geo_params = []
 
     for i in range(len(joint_names)):
         for j in tpl_names:
             geo_params.append(j + ("_%d" % i))
+
     phi_gp = [0] * len(geo_params)
-
     geo_params = dict(zip(geo_params, phi_gp))
-
     return geo_params
 
 
 def get_jointOffset(joint_names):
     joint_off = []
+
     for i in range(len(joint_names)):
         joint_off.append("off" + "_%d" % i)
 
@@ -117,11 +116,12 @@ for j in range(6):
 
 ###########FrameJacobian###########################
 # eliminate zero columns
-J_e, params_r = eliminate_non_dynaffect(J, joint_off, tol_e=1e-6)
+J_e, params_eJ = eliminate_non_dynaffect(J, joint_off, tol_e=1e-6)
 
 # get base parameters
-J_b, params_base = get_baseParams(J_e, params_r)
+J_b, params_baseJ = get_baseParams(J_e, params_eJ)
 
+print(params_baseJ)
 ###########FrameKinematicRegressor#################
 # select columns correspond to joint offset
 joint_idx = [2, 11, 17, 23, 29, 35, 41, 47, 48, 49,
@@ -138,13 +138,12 @@ for i in joint_idx:
 geo_params_sel = dict(geo_params_sel)
 
 # eliminate zero columns
-R_e, geo_paramsr = eliminate_non_dynaffect(R_sel, geo_params_sel, tol_e=1e-6)
+R_e, params_eR = eliminate_non_dynaffect(R_sel, geo_params_sel, tol_e=1e-6)
 
 # get base parameters
-R_b, params_base = get_baseParams(R_e, geo_paramsr)
-print("base parameters: ", (params_base))
+R_b, params_baseR = get_baseParams(R_e, params_eR)
+print("base parameters: ", (params_baseR))
 print("condition number: ", cond_num(R_b))
-
 
 
 # add a marker at the ee

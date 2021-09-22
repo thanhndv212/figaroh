@@ -90,6 +90,7 @@ def main():
         'eps': 1e-3,
         'Ind_joint': np.arange(8),
         'PLOT': 0,
+        'calibration_index': 3
     }
 
     # Generate feasible joint configuration
@@ -207,6 +208,7 @@ def main():
     cond_R = cond_num(R_b)
     cond_J = cond_num(J_b)
     print(cond_R, cond_J)
+
 
 if __name__ == "__main__":
     main()
