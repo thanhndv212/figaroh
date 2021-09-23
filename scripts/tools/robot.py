@@ -7,7 +7,7 @@ from os.path import dirname, join, abspath
 from sys import argv
 import numpy as np
 import hppfcl
-
+from gepetto import Color
 
 class Robot(RobotWrapper):
     def __init__(
@@ -83,7 +83,7 @@ class Robot(RobotWrapper):
         self.geom_model = pin.buildGeomFromUrdf(
             self.model, urdf_model_path, model_path, pin.GeometryType.COLLISION
         )
-
+        
     def get_standard_parameters(self):
         """This function prints out the standard inertial parameters defined in urdf model.
         Output: params_std: a dictionary of parameter names and their values"""
@@ -145,8 +145,8 @@ class Robot(RobotWrapper):
             self.initViewer()
             self.loadViewerModel(self.robot_urdf)
             q = self.q0
+            
             self.display(q)
-
 
 def Capsule(name, joint, radius, length, placement, color=[0.7, 0.7, 0.98, 1]):
     """Create a Pinocchio::FCL::Capsule to be added in the Geom-Model."""
@@ -293,7 +293,7 @@ if __name__ == "__main__":
     # pin.forwardKinematics(model, data, q)
     # p = robot.data.oMi[7].translation
     robot.display_q0()
-
+    
     # active_joints = ["torso_lift_joint",
     #                  "arm_1_joint",
     #                  "arm_2_joint",

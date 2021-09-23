@@ -26,12 +26,12 @@ def Import_model():
     return robot
 
 
-def display(robot, q):
+def display(robot,model,  q):
 
     robot.display(q)
-    # for name, oMi in zip(model.names[1:], robot.viz.data.oMi[1:]):
-    #    robot.viewer.gui.applyConfiguration(name, pin.SE3ToXYZQUATtuple(oMi))
-    # gui.refresh()
+    for name, oMi in zip(model.names[1:], robot.viz.data.oMi[1:]):
+        robot.viewer.gui.applyConfiguration(name, pin.SE3ToXYZQUATtuple(oMi))
+    robot.viewer.gui.refresh()
 
 
 def get_jointOffset(joint_names):
@@ -188,7 +188,7 @@ class CIK_problem(object):
                          self.param['iter']-1, 2*self.param['NbSample']+self.param['iter']-1]]
 
         # regularisation term noneed to use now +1e-4*np.sum( np.square(x) )
-        J = np.sum(np.square(PEEd-PEEe))
+        J = np.sum(np.square(PEEd-PEEe))+1e-1*1/np.sum(np.square(x-self.param['x_opt_prev'])+100)
 
         return J
 

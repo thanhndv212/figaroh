@@ -44,7 +44,7 @@ from tiago_mocap_calib_fun_def import *
 
 def main():
 
-    NbGrid = 2
+    NbGrid = 3
     NbSample = pow(NbGrid, 3)
     # NbSample=2
     Nq = 8  # number of joints to be optimized
@@ -57,6 +57,7 @@ def main():
 
     data = robot.model.createData()
     model = robot.model
+    
 
     # create a dictionary of geometric parameters errors
     joint_names = []
@@ -85,6 +86,7 @@ def main():
     # Ind_joint index of the joint that sould be modified for/by the calibration process
     param = {
         'q0': np.array(robot.q0),
+        'x_opt_prev':np.zeros([8]),
         'IDX_TOOL': model.getFrameId('ee_marker_joint'),
         'NbSample': NbSample,
         'eps': 1e-3,
@@ -106,9 +108,9 @@ def main():
  
     '''
 
-    cube_pose = [0.5, 0.1, 0.5]  # position of the cube
+    cube_pose = [0.55, 0.0, 0.5]  # position of the cube
     cube_pose[len(cube_pose):] = [0, 0, 0, 1]  # orientation of the cube
-    cube_dim = [0.2, 0.2, 0.2]
+    cube_dim = [0.45, 0.5, 0.5]
 
     PEEd_x = np.linspace(cube_pose[0] - cube_dim[0]/2,
                          cube_pose[0] + cube_dim[0]/2, NbGrid)
@@ -170,11 +172,14 @@ def main():
         nlp.addOption('tol', 1e-6)  # Tolerance on teh end-effector 3D position
         # Tolerance on teh end-effector 3D position
         nlp.addOption('print_level', 1)
-
+       
+       
         #starttime = time.time()
         x_opt, info = nlp.solve(x0)
         #print('That took {} seconds'.format(time.time() - starttime))
 
+        param['x_opt_prev']=x_opt# save joint configuration to maximise distance with the next one
+         
         q_opt = np.array(robot.q0)  # np.zeros(shape=(12, 1))
 
         PEEe = []
@@ -189,6 +194,7 @@ def main():
 
         PEEd_iter = PEEd[[param['iter']-1, NbSample +
                           param['iter']-1, 2*NbSample+param['iter']-1]]
+  
 
         J = np.sum(np.sqrt(np.square(PEEd_iter-PEEe)))/3
         if J <= 1e-3:
@@ -198,13 +204,56 @@ def main():
             print("Iter {} Desired end-effector position: {} ".format(iter+1, PEEd_iter))
             print("Iter {} Achieved end-effector position: {} ".format(iter+1, PEEe))
 
-    # PLEASE THANH COMPLETE THE CODE HERE TO calulate the condition number of the base regressor matrix using x_opt
+    
+  
+
+############## PLEASE THANH find a way to put this in a function
     q = np.reshape(q, (NbSample, model.nq), order='C')
+    print(q.shape)
+    robot.initViewer(loadModel=True)
+    gui = robot.viewer.gui
+
+    for iter in range(NbSample):
+       
+        #pin.forwardKinematics(model,  data, q[iter,:])
+        #pin.updateFramePlacements(model,  data)
+
+        display(robot,model, q[iter,:])
+
+         
+        gui.addBox("world/box_1",cube_dim[0], cube_dim[1],cube_dim[2],[0, 1, 0, 0.4])  
+        corner_cube=[cube_pose[0],cube_pose[1],cube_pose[2]]
+        corner_cube[len(corner_cube):] = [0, 0, 0, 1]
+        gui.applyConfiguration("world/box_1",cube_pose)
+        
+        param['iter'] = iter+1
+        PEEd_iter = PEEd[[param['iter']-1, NbSample +
+                          param['iter']-1, 2*NbSample+param['iter']-1]]
+        
+        gui.addSphere("world/sph_1", 0.02, [1., 0., 0., 0.75])
+        gui.applyConfiguration("world/sph_1", [PEEd_iter[0],PEEd_iter[1],PEEd_iter[2]] + [0, 0, 0, 1])
+        
+        #print(iter)
+        #print(PEEd_iter)
+
+        gui.refresh()
+        programPause = input("Press the <ENTER> to continue to next posture...")
+     
+
+##############
+
+    # # visualize
+    fig = plt.figure(figsize=(10, 7))
+    #ax = plt.axes(projection="3d")
+    plt.plot(q)
+    #plt.title("simple 3D scatter plot")
+    #plt.show()
+
+
     R_b, params_baseR, J_b, params_baseJ = Calculate_identifiable_kinematics_model(
         q, model, data, param)
 
     # condition number
-
     cond_R = cond_num(R_b)
     cond_J = cond_num(J_b)
     print(cond_R, cond_J)
