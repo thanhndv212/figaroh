@@ -3,7 +3,7 @@ from scipy.optimize import approx_fprime
 import pinocchio as pin
 from pinocchio.visualize import GepettoVisualizer
 import time
-import ipopt
+import cyipopt
 import multiprocessing as mp
 from functools import partial
 import matplotlib.pyplot as plt
@@ -80,6 +80,50 @@ def add_eemarker_frame(frame_name, p, rpy, model, data):
     return ee_frame_id
 
 
+def get_PEE_var(var, q, model, data, param, noise=False):
+    """ Calculates corresponding cordinates of end_effector, given a set of joint configurations
+    """
+    # calibration index = 3 or 6, indicating whether or not orientation incld.
+    nrow = param['calibration_index']
+    ncol = param['NbSample']
+    PEE = np.empty((nrow, ncol))
+    q_temp = np.copy(q)
+    for i in range(ncol):
+        config = q_temp[i, :]
+        # convert rpy to quaternion for free-flyer (7  for free flyer)
+        p_base = var[0:3]
+        rpy_base = var[3:6]
+        R_base = pin.rpy.rpyToMatrix(rpy_base)
+        base_placement = pin.SE3(R_base, p_base)
+
+        # adding offset (8 for 8 joints)
+        config[0:8] = config[0:8] + var[6:14]
+
+        # adding zero mean additive noise to simulated measured coordinates
+        if noise:
+            noise = np.random.normal(0, 0.001, var[0:8].shape)
+            config[0:8] = config[0:8] + noise
+        pin.framesForwardKinematics(model, data, config)
+        pin.updateFramePlacements(model, data)
+
+        # calculate oMf from wrist to the last frame
+        p_ee = var[14:17]
+        rpy_ee = var[17:20]
+        R_ee = pin.rpy.rpyToMatrix(rpy_ee)
+        last_placement = pin.SE3(R_ee, p_ee)
+
+        new_oMf = data.oMf[param['IDX_TOOL']]*last_placement
+
+        # create a matrix containing coordinates of end_effector
+        PEE[0:3, i] = new_oMf.translation
+        if nrow == 6:
+            PEE_rot = new_oMf.rotation
+            PEE[3:6, i] = pin.rpy.matrixToRpy(PEE_rot)
+
+    PEE = PEE.flatten('C')
+    return PEE
+
+
 def get_PEE(offset_var, q, model, data, param, noise=False):
     """ Calculates corresponding cordinates of end_effector, given a set of joint configurations
     """
@@ -87,16 +131,18 @@ def get_PEE(offset_var, q, model, data, param, noise=False):
     nrow = param['calibration_index']
     ncol = param['NbSample']
     PEE = np.empty((nrow, ncol))
+    q_temp = np.copy(q)
     for i in range(ncol):
-        q[i, 0:8] = q[i, 0:8] + offset_var
-
+        config = q_temp[i, :]
+        config[0:8] = config[0:8] + offset_var
         # adding zero mean additive noise to simulated measured coordinates
         if noise:
             noise = np.random.normal(0, 0.001, offset_var.shape)
-            q[i, 0:8] = q[i, 0:8] + noise
+            config[0:8] = config[0:8] + noise
 
-        pin.framesForwardKinematics(model, data, q[i, :])
+        pin.framesForwardKinematics(model, data, config)
         pin.updateFramePlacements(model, data)
+
         PEE[0:3, i] = data.oMf[param['IDX_TOOL']].translation
         if nrow == 6:
             PEE_rot = data.oMf[param['IDX_TOOL']].rotation
@@ -154,6 +200,7 @@ def Calculate_identifiable_kinematics_model(q, model, data, param):
     """ Calculate jacobian matrix and kinematic regressor and aggreating into one matrix,
         given a set of configurations or random configurations if not given.
     """
+    q_temp = q
     # Note if no q id given then use random generation of q to determine the minimal kinematics model
     if np.any(q):
         MIN_MODEL = 0
@@ -167,7 +214,7 @@ def Calculate_identifiable_kinematics_model(q, model, data, param):
         if MIN_MODEL == 1:
             q_i = pin.randomConfiguration(model)
         else:
-            q_i = q[i, :]
+            q_i = q_temp[i, :]
         q_i[8:] = param['q0'][8:]
         model, data, Ri, Ji = Calculate_kinematics_model(
             q_i, model, data, param['IDX_TOOL'])
@@ -240,14 +287,14 @@ class CIK_problem(object):
     def objective(self, x):
         # callback for objective
 
-        q = np.array(self.param['q0'])
+        config = np.array(self.param['q0'])
 
         PEEe = []
         for j in range(1):  # range(self.NbSample):
 
-            q[self.param['Ind_joint']] = x  # [j::self.param['NbSample']]
+            config[self.param['Ind_joint']] = x  # [j::self.param['NbSample']]
 
-            pin.forwardKinematics(self.model, self.data, q)
+            pin.forwardKinematics(self.model, self.data, config)
             pin.updateFramePlacements(self.model, self.data)
             PEEe = np.append(PEEe, np.array(
                 self.data.oMf[self.param['IDX_TOOL']].translation))
