@@ -11,7 +11,7 @@ import numdifftools as nd
 import quadprog as qp
 
 from tools.regressor import eliminate_non_dynaffect
-from tools.qrdecomposition import get_baseParams, cond_num
+from tools.qrdecomposition import get_baseParams, get_baseIndex, build_baseRegressor, cond_num
 
 
 #from scipy.optimize import approx_fprime
@@ -26,7 +26,7 @@ def Import_model():
     return robot
 
 
-def display(robot,model,  q):
+def display(robot, model,  q):
 
     robot.display(q)
     for name, oMi in zip(model.names[1:], robot.viz.data.oMi[1:]):
@@ -35,17 +35,25 @@ def display(robot,model,  q):
 
 
 def get_jointOffset(joint_names):
+    """ This function give a dictionary of joint offset parameters.
+            Input:  joint_names: a list of joint names (from model.names)
+            Output: joint_off: a dictionary of joint offsets.
+    """
     joint_off = []
 
     for i in range(len(joint_names)):
         joint_off.append("off" + "_%d" % i)
 
-    phi_jo = [0] * len(joint_off) #default zero values
+    phi_jo = [0] * len(joint_off)  # default zero values
     joint_off = dict(zip(joint_off, phi_jo))
     return joint_off
 
 
 def get_geoOffset(joint_names):
+    """ This function give a dictionary of variations (offset) of kinematics parameters.
+            Input:  joint_names: a list of joint names (from model.names)
+            Output: geo_params: a dictionary of variations of kinematics parameters.
+    """
     tpl_names = ["d_px", "d_py", "d_pz", "d_phix", "d_phiy", "d_phiz"]
     geo_params = []
 
@@ -53,11 +61,28 @@ def get_geoOffset(joint_names):
         for j in tpl_names:
             geo_params.append(j + ("_%d" % i))
 
-    phi_gp = [0] * len(geo_params) #default zero values
+    phi_gp = [0] * len(geo_params)  # default zero values
     geo_params = dict(zip(geo_params, phi_gp))
     return geo_params
 
+
+def add_eemarker_frame(frame_name, p, rpy, model, data):
+    """ Adds a frame at the end_effector.
+    """
+    p = np.array([0.1, 0.1, 0.1])
+    R = pin.rpy.rpyToMatrix(rpy)
+    frame_placement = pin.SE3(R, p)
+
+    parent_jointId = model.getJointId("arm_7_joint")
+    prev_frameId = model.getFrameId("arm_7_joint")
+    ee_frame_id = model.addFrame(
+        pin.Frame(frame_name, parent_jointId, prev_frameId, frame_placement, pin.FrameType(0), pin.Inertia.Zero()), False)
+    return ee_frame_id
+
+
 def get_PEE(offset_var, q, model, data, param, noise=False):
+    """ Calculates corresponding cordinates of end_effector, given a set of joint configurations
+    """
     # calibration index = 3 or 6, indicating whether or not orientation incld.
     nrow = param['calibration_index']
     ncol = param['NbSample']
@@ -74,13 +99,15 @@ def get_PEE(offset_var, q, model, data, param, noise=False):
         pin.updateFramePlacements(model, data)
         PEE[0:3, i] = data.oMf[param['IDX_TOOL']].translation
         if nrow == 6:
-            PEE_rot = oMf[param['IDX_TOOL']].rotation
+            PEE_rot = data.oMf[param['IDX_TOOL']].rotation
             PEE[3:6, i] = pin.rpy.matrixToRpy(PEE_rot)
     PEE = PEE.flatten('C')
     return PEE
 
-def Calculate_kinematics_model(q_i, model, data, IDX_TOOL):
 
+def Calculate_kinematics_model(q_i, model, data, IDX_TOOL):
+    """ Calculate jacobian matrix and kinematic regressor given ONE configuration.
+    """
     # print(mp.current_process())
     #pin.updateGlobalPlacements(model , data)
     pin.forwardKinematics(model, data, q_i)
@@ -94,7 +121,39 @@ def Calculate_kinematics_model(q_i, model, data, IDX_TOOL):
     return model, data, R, J
 
 
+# def Calculate_identifiable_jointOffset_model(q, model, data, param):
+
+#     # Note if no q id given then use random generation of q to determine the minimal kinematics model
+#     if np.any(q):
+#         MIN_MODEL = 0
+#     else:
+#         MIN_MODEL = 1
+
+#     # obtain aggreated Jacobian matrix J and kinematic regressor R
+#     calib_idx = param['calibration_index']
+#     J = np.empty([calib_idx*param['NbSample'], model.nv])
+#     for i in range(param['NbSample']):
+#         q_i = pin.randomConfiguration(model)
+#         q_i[8:] = param['q0'][8:]
+#         model, data, Ri, Ji = Calculate_kinematics_model(
+#             q_i, model, data, param['IDX_TOOL'])
+#         for j in range(calib_idx):
+#             J[param['NbSample']*j + i, :] = Ji[j, :]
+
+#     # obtain joint names
+#     joint_names = [name for i, name in enumerate(model.names)]
+
+#     # calculate base Jacobian matrix J_b
+#     joint_off = get_jointOffset(joint_names)
+#     J_e, params_eJ = eliminate_non_dynaffect(J, joint_off, tol_e=1e-6)
+#     J_b, params_baseJ = get_baseParams(J_e, params_eJ)
+#     return J_b, params_baseJ
+
+
 def Calculate_identifiable_kinematics_model(q, model, data, param):
+    """ Calculate jacobian matrix and kinematic regressor and aggreating into one matrix,
+        given a set of configurations or random configurations if not given.
+    """
     # Note if no q id given then use random generation of q to determine the minimal kinematics model
     if np.any(q):
         MIN_MODEL = 0
@@ -103,46 +162,56 @@ def Calculate_identifiable_kinematics_model(q, model, data, param):
 
     # obtain aggreated Jacobian matrix J and kinematic regressor R
     calib_idx = param['calibration_index']
-    J = np.empty([calib_idx*param['NbSample'], model.nv])
     R = np.empty([calib_idx*param['NbSample'], 6*model.nv])
     for i in range(param['NbSample']):
         if MIN_MODEL == 1:
             q_i = pin.randomConfiguration(model)
-        elif MIN_MODEL == 0:
+        else:
             q_i = q[i, :]
-
         q_i[8:] = param['q0'][8:]
-
         model, data, Ri, Ji = Calculate_kinematics_model(
             q_i, model, data, param['IDX_TOOL'])
         for j in range(calib_idx):
-            J[param['NbSample']*j + i, :] = Ji[j, :]
             R[param['NbSample']*j + i, :] = Ri[j, :]
+    return R
 
+
+def Calculate_base_kinematics_regressor(q, model, data, param):
     # obtain joint names
     joint_names = [name for i, name in enumerate(model.names)]
-
-    # calculate base Jacobian matrix J_b
-    joint_off = get_jointOffset(joint_names)
-    J_e, params_eJ = eliminate_non_dynaffect(J, joint_off, tol_e=1e-6)
-    J_b, params_baseJ = get_baseParams(J_e, params_eJ)
-
-    # select columns correspond to joint offset
     geo_params = get_geoOffset(joint_names)
-    joint_idx = [2, 11, 17, 23, 29, 35, 41, 47, 48, 49,
-                 50, 51, 52, 53]  # all on z axis - checked!!
-    R_sel = R[:, joint_idx]
+
+    # particularly select columns/parameters corresponding to joint and 6 last parameters
+    actJoint_idx = [2, 11, 17, 23, 29, 35, 41, 47, 48, 49,
+                    50, 51, 52, 53]  # all on z axis - checked!!
 
     # a dictionary of selected parameters
     gp_listItems = list(geo_params.items())
     geo_params_sel = []
-    for i in joint_idx:
+    for i in actJoint_idx:
         geo_params_sel.append(gp_listItems[i])
     geo_params_sel = dict(geo_params_sel)
 
-    # calculate base kinematic regressor R_b
-    R_e, params_eR = eliminate_non_dynaffect(R_sel, geo_params_sel, tol_e=1e-6)
-    R_b, params_baseR = get_baseParams(R_e, params_eR)
+    # calculate kinematic regressor with random configs
+    Rrand = Calculate_identifiable_kinematics_model([], model, data, param)
+    # select columns corresponding to joint_idx
+    Rrand_sel = Rrand[:, actJoint_idx]
+
+    # obtain a list of column after apply QR decomposition
+    Rrand_e, paramsrand_e = eliminate_non_dynaffect(
+        Rrand_sel, geo_params_sel, tol_e=1e-6)
+    idx_base = get_baseIndex(Rrand_e, paramsrand_e)
+    _, paramsrand_base = get_baseParams(Rrand_e, paramsrand_e)
+    # calculate kinematic regressor with random configs
+    R = Calculate_identifiable_kinematics_model(q, model, data, param)
+    # select columns corresponding to joint_idx
+    R_sel = R[:, actJoint_idx]
+
+    # obtain a list of column after apply QR decomposition
+    R_e, params_e = eliminate_non_dynaffect(
+        R_sel, geo_params_sel, tol_e=1e-6)
+
+    R_b = build_baseRegressor(R_e, idx_base)
 
     if param['PLOT'] == 1:
         # plotting
@@ -155,7 +224,7 @@ def Calculate_identifiable_kinematics_model(q, model, data, param):
             axs[j].set_ylabel(ylabel[j])
         # plt.show()
 
-    return R_b, params_baseR, J_b, params_baseJ
+    return R_b, paramsrand_base
 
 # %% IK process
 
@@ -188,7 +257,8 @@ class CIK_problem(object):
                          self.param['iter']-1, 2*self.param['NbSample']+self.param['iter']-1]]
 
         # regularisation term noneed to use now +1e-4*np.sum( np.square(x) )
-        J = np.sum(np.square(PEEd-PEEe))+1e-1*1/np.sum(np.square(x-self.param['x_opt_prev'])+100)
+        J = np.sum(np.square(PEEd-PEEe))+1e-1*1 / \
+            np.sum(np.square(x-self.param['x_opt_prev'])+100)
 
         return J
 
