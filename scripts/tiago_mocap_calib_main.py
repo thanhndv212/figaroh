@@ -18,6 +18,7 @@ import numpy as np
 
 import pandas as pd
 import csv
+import json
 
 from tools.robot import Robot
 from tools.regressor import eliminate_non_dynaffect
@@ -58,7 +59,6 @@ def main():
     data = robot.model.createData()
     model = robot.model
 
-
     # create a dictionary of geometric parameters errors
     joint_names = []
     for i, name in enumerate(model.names):
@@ -92,7 +92,7 @@ def main():
         'eps': 1e-3,
         'Ind_joint': np.arange(8),
         'PLOT': 0,
-        'calibration_index': 3,
+        'calibration_index': 6,
     }
 
     # Generate feasible joint configuration
@@ -100,12 +100,12 @@ def main():
     cube_pose=[0.5, 0.1, 0.5]# position of the cube
     cube_pose[len(cube_pose):] = [0, 0, 0, 1]# orientation of the cube
     cube_dim=[0.2, 0.2, 0.2]
-    
+
     PEEd = np.linspace(cube_pose[0], cube_pose[0], NbSample)
     PEEd = np.append(PEEd, np.linspace(cube_pose[1], cube_pose[1], NbSample))
     PEEd = np.append(PEEd, np.linspace(
         cube_pose[2]+cube_dim[2]/2, cube_pose[2]+cube_dim[2]/2, NbSample))
- 
+
     '''
 
     cube_pose = [0.55, 0.0, 0.5]  # position of the cube
@@ -133,7 +133,6 @@ def main():
     # plt.show()
 
     PEEd = PEEd_2d.flatten('C')
-    print(PEEd)
     param['PEEd'] = PEEd
     param['eps_gradient'] = 1e-6
 
@@ -147,6 +146,7 @@ def main():
                 x0, (model.lowerPositionLimit[j]+model.upperPositionLimit[j])/2)
     starttime = time.time()
     q = []
+    q_list = []
     for iter in range(NbSample):
 
         param['iter'] = iter+1
@@ -173,9 +173,9 @@ def main():
         # Tolerance on teh end-effector 3D position
         nlp.addOption('print_level', 1)
 
-        #starttime = time.time()
+        # starttime = time.time()
         x_opt, info = nlp.solve(x0)
-        #print('That took {} seconds'.format(time.time() - starttime))
+        # print('That took {} seconds'.format(time.time() - starttime))
 
         # save joint configuration to maximise distance with the next one
         param['x_opt_prev'] = x_opt
@@ -189,7 +189,7 @@ def main():
             pin.forwardKinematics(model,  data, q_opt)
             pin.updateFramePlacements(model,  data)
 
-            #Calculate_kinematics_model(q_opt, model, data, IDX_TOOL)
+            # Calculate_kinematics_model(q_opt, model, data, IDX_TOOL)
             PEEe = np.array(data.oMf[IDX_TOOL].translation)
 
         PEEd_iter = PEEd[[param['iter']-1, NbSample +
@@ -199,14 +199,21 @@ def main():
         if J <= 1e-3:
             print("Iter {} success ".format(iter+1))
             q = np.append(q, q_opt)
+            q_list.append(np.around(x_opt, 4).tolist())
         else:
             print("Iter {} Desired end-effector position: {} ".format(iter+1, PEEd_iter))
             print("Iter {} Achieved end-effector position: {} ".format(iter+1, PEEe))
 
 
 # PLEASE THANH find a way to put this in a function
+    dt = datetime.now()
+    current_time = dt.strftime("%d_%b_%Y_%H%M")
+    text_file = join(
+        dirname(dirname(str(abspath(__file__)))),
+        f"data/tiago_calib_exp_{current_time}.txt")
+    json.dump(q_list, open(text_file, "w"))
+
     q = np.reshape(q, (NbSample, model.nq), order='C')
-    print(q.shape)
     # robot.initViewer(loadModel=True)
     # gui = robot.viewer.gui
 
@@ -240,14 +247,13 @@ def main():
 
     # # visualize
     fig = plt.figure(figsize=(10, 7))
-    #ax = plt.axes(projection="3d")
+    # ax = plt.axes(projection="3d")
     plt.plot(q)
-    #plt.title("simple 3D scatter plot")
+    # plt.title("simple 3D scatter plot")
     # plt.show()
 
     R_b, params_base = Calculate_base_kinematics_regressor(
         q, model, data, param)
-    print(R_b.shape)
     # condition number
     cond_R = cond_num(R_b)
     print("condition number: ", cond_R)
