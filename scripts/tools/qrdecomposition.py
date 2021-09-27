@@ -277,7 +277,7 @@ def get_baseIndex(W_e, params_r):
     """ This function finds the linearly independent parameters.
             Input:  W_e: regressor matrix
                     params_r: a dictionary of parameters
-            Output: idx_base: a tuple of indices of independent parameters.
+            Output: idx_base: a tuple of indices of only independent parameters.
     """
     Q, R = np.linalg.qr(W_e)
 

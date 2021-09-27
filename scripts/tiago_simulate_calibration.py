@@ -32,34 +32,7 @@ robot = Robot(
 )
 model = robot.model
 data = robot.data
-'''
-# convert rpy to quaternion for free-flyer
-q = robot.q0
-p = np.array([0.1, 0.1, 0.1])
-rpy = np.array([0.1, 0.1, 0.1])
-R = pin.rpy.rpyToMatrix(rpy)
-some_placement = pin.SE3(R, p)
-q[:7] = pin.SE3ToXYZQUAT(some_placement)
-pin.framesForwardKinematics(model, data, q)
-# add frame
-p = np.array([0, 0, 0])
-rpy = np.array([0, 0, 0])
-R = pin.rpy.rpyToMatrix(rpy)
-frame_placement = pin.SE3(R, p)
-print(type(frame_placement))
-parent_joint = model.getJointId("arm_7_joint")
-prev_frame = model.getFrameId("arm_7_joint")
-ee_frame_id = model.addFrame(
-    pin.Frame("end_effector", parent_joint, prev_frame,
-              frame_placement, pin.FrameType(0), pin.Inertia.Zero()), False)
-pin.updateGlobalPlacements(model, data)
-# print(model.getFrameId('end_effector'))
-
-# check added frame
-for i, frame in enumerate(model.frames):
-    print('%d' % i, frame)
-print(len(data.oMf[79]))
-'''
+print(model.lowerPositionLimit)
 joint_names = [name for i, name in enumerate(model.names)]
 geo_params = get_geoOffset(joint_names)
 joint_offs = get_jointOffset(joint_names)
@@ -76,7 +49,7 @@ param = {
     'PLOT': 0,
     'calibration_index': 6
 }
-
+################ simulated data ##########################
 # create artificial offsets
 offset_factor = 0.01
 active_jointID = range(1, 9)
@@ -92,22 +65,42 @@ offset_0 = np.zeros(njoints)  # zero offsets
 q_sample = np.empty((param['NbSample'], model.nq))
 for i in range(param['NbSample']):
     config = pin.randomConfiguration(model)
-    config[8:] = robot.q0[8:]
+    config[8:] = param['q0'][8:]
     q_sample[i, :] = config
 
 # create simulated end effector coordinates measures (PEEm)
-PEEm = get_PEE(offset, q_sample, model, data, param, noise=False)
+PEEm_sim = get_PEE(offset, q_sample, model, data, param, noise=False)
+
+################ experiment data ##########################
+# read csv file
+path = '/home/thanhndv212/Cooking/figaroh/data/exp_data_0924.csv'
+xyz_rotQuat = pd.read_csv(path, usecols=list(range(0, 7))).to_numpy()
+q_act = pd.read_csv(path, usecols=list(range(7, 15))).to_numpy()
+param['NbSample'] = q_act.shape[0]
+# measured end effector coordinates
+PEEm_exp = np.empty((param['calibration_index'], param['NbSample']))
+for i in range(param['NbSample']):
+    PEE_se3 = pin.XYZQUATToSE3(xyz_rotQuat[i, :])
+    PEEm_exp[0:3, i] = PEE_se3.translation
+    PEEm_exp[3:6, i] = pin.rpy.matrixToRpy(PEE_se3.rotation)
+PEEm_exp = PEEm_exp.flatten('C')
+
+# measure joint configs
+q_exp = np.empty((param['NbSample'], param['q0'].shape[0]))
+for i in range(param['NbSample']):
+    q_exp[i, 0:8] = q_act[i, :]
+    q_exp[i, 8:] = param['q0'][8:]
 
 # x,y,z,r,p,y from mocap to base ( 6 parameters for pos and orient)
 qBase_0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
 # x,y,z,r,p,y from wrist to end_effector ( 6 parameters for pos and orient)
-qEE_0 = np.array([0.0, 0.0, 0.0, 0., 0., 0.])
+qEE_0 = np.array([0., 0., 0., 0., 0., 0.])
 
 # variable vector 20 par = 6 base par + 8 joint off + 6 endeffector par
 var_0 = np.append(np.append(qBase_0, offset_0), qEE_0)
 
-# # NON-LINEAR model with Levenberg-Marquardt ##############
+# # NON-LINEAR model with Levenberg-Marquardt #################
 # """
 #     - minimize the difference between measured coordinates of end-effector
 #     and its estimated values from DGM by Levenberg-Marquardt
@@ -115,8 +108,8 @@ var_0 = np.append(np.append(qBase_0, offset_0), qEE_0)
 # # ###########################################################
 
 
-def cost_func(var, q_sample, model, data, param,  PEEm):
-    PEEe = get_PEE_var(var, q_sample, model, data, param, noise=False)
+def cost_func(var, q, model, data, param,  PEEm):
+    PEEe = get_PEE_var(var, q, model, data, param, noise=False)
     return (PEEm-PEEe)
 
 
@@ -124,20 +117,21 @@ def cost_func(var, q_sample, model, data, param,  PEEm):
 param['IDX_TOOL'] = model.getFrameId('arm_7_link')
 
 LM_solve = least_squares(cost_func, var_0,  method='lm',
-                         args=(q_sample, model, data, param,  PEEm))
-print("predefined offsets: ", np.append(np.zeros([6]), np.append(
-    offset, [0.1, 0.1, 0.1, 0., 0., 0.])))
+                         args=(q_exp, model, data, param,  PEEm_exp))
+# print("predefined offsets: ", np.append(np.zeros([6]), np.append(
+#     offset, [0.1, 0.1, 0.1, 0., 0., 0.])))
 print("solution: ", LM_solve.x)
 print("minimized cost function: ", LM_solve.cost)
 print("optimality: ", LM_solve.optimality)
 
-# # LINEARIZED model with iterative least square
+# # LINEARIZED model with iterative least square ###############
 # """
 #     - obtaining base regressor and base geometric parameters (BGP) offsets
 #     - update the regressor and predited coordinates errors at every iteration
 #     - apply least square to get BGP offsets
 #     - repeate the process until coordinates errors < threshold
 # """
+# # ###########################################################
 # # create regressor: modeling code
 # R_b, params_baseR, J_b, params_baseJ = Calculate_identifiable_kinematics_model(
 #     q, model, data, param)
@@ -171,3 +165,33 @@ print("optimality: ", LM_solve.optimality)
 #     # print("norm: ", np.linalg.norm(delta_X))
 
 # print("predefined offsets: ", offset)
+
+####### template function #########
+'''
+# convert rpy to quaternion for free-flyer
+q = robot.q0
+p = np.array([0.1, 0.1, 0.1])
+rpy = np.array([0.1, 0.1, 0.1])
+R = pin.rpy.rpyToMatrix(rpy)
+some_placement = pin.SE3(R, p)
+q[:7] = pin.SE3ToXYZQUAT(some_placement)
+pin.framesForwardKinematics(model, data, q)
+# add frame
+p = np.array([0, 0, 0])
+rpy = np.array([0, 0, 0])
+R = pin.rpy.rpyToMatrix(rpy)
+frame_placement = pin.SE3(R, p)
+print(type(frame_placement))
+parent_joint = model.getJointId("arm_7_joint")
+prev_frame = model.getFrameId("arm_7_joint")
+ee_frame_id = model.addFrame(
+    pin.Frame("end_effector", parent_joint, prev_frame,
+              frame_placement, pin.FrameType(0), pin.Inertia.Zero()), False)
+pin.updateGlobalPlacements(model, data)
+# print(model.getFrameId('end_effector'))
+
+# check added frame
+for i, frame in enumerate(model.frames):
+    print('%d' % i, frame)
+print(len(data.oMf[79]))
+'''
