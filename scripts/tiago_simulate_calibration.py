@@ -32,11 +32,11 @@ robot = Robot(
 )
 model = robot.model
 data = robot.data
-print(model.lowerPositionLimit)
 joint_names = [name for i, name in enumerate(model.names)]
 geo_params = get_geoOffset(joint_names)
 joint_offs = get_jointOffset(joint_names)
 NbSample = 20
+njoints = 8
 
 # create values storing dictionary 'param'
 param = {
@@ -51,25 +51,25 @@ param = {
 }
 ################ simulated data ##########################
 # create artificial offsets
-offset_factor = 0.01
-active_jointID = range(1, 9)
-lb = [model.lowerPositionLimit[i] for i in active_jointID]
-ub = [model.upperPositionLimit[i] for i in active_jointID]
-offset = np.array([offset_factor*(ub[j] - lb[j]) *
-                  (random.getrandbits(1)*2 - 1) for j in range(len(lb))])
-njoints = 8
-offset_0 = np.zeros(njoints)  # zero offsets
+# offset_factor = 0.01
+# active_jointID = range(1, 9)
+# lb = [model.lowerPositionLimit[i] for i in active_jointID]
+# ub = [model.upperPositionLimit[i] for i in active_jointID]
+# offset = np.array([offset_factor*(ub[j] - lb[j]) *
+#                   (random.getrandbits(1)*2 - 1) for j in range(len(lb))])
+# print("predefined offsets: ", np.append(np.zeros([6]), np.append(
+#     offset, [0.1, 0.1, 0.1, 0., 0., 0.])))
 
+# # create sample configurations
+# q_sample = np.empty((param['NbSample'], model.nq))
+# for i in range(param['NbSample']):
+#     config = pin.randomConfiguration(model)
+#     config[8:] = param['q0'][8:]
+#     q_sample[i, :] = config
 
-# create sample configurations
-q_sample = np.empty((param['NbSample'], model.nq))
-for i in range(param['NbSample']):
-    config = pin.randomConfiguration(model)
-    config[8:] = param['q0'][8:]
-    q_sample[i, :] = config
-
-# create simulated end effector coordinates measures (PEEm)
-PEEm_sim = get_PEE(offset, q_sample, model, data, param, noise=False)
+# # create simulated end effector coordinates measures (PEEm)
+# PEEm_sample = get_PEE(offset, q_sample, model, data, param, noise=False)
+############################################################
 
 ################ experiment data ##########################
 # read csv file
@@ -90,27 +90,35 @@ q_exp = np.empty((param['NbSample'], param['q0'].shape[0]))
 for i in range(param['NbSample']):
     q_exp[i, 0:8] = q_act[i, :]
     q_exp[i, 8:] = param['q0'][8:]
+#############################################################
 
-# x,y,z,r,p,y from mocap to base ( 6 parameters for pos and orient)
-qBase_0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-
-# x,y,z,r,p,y from wrist to end_effector ( 6 parameters for pos and orient)
-qEE_0 = np.array([0., 0., 0., 0., 0., 0.])
-
-# variable vector 20 par = 6 base par + 8 joint off + 6 endeffector par
-var_0 = np.append(np.append(qBase_0, offset_0), qEE_0)
 
 # # NON-LINEAR model with Levenberg-Marquardt #################
 # """
 #     - minimize the difference between measured coordinates of end-effector
 #     and its estimated values from DGM by Levenberg-Marquardt
 # """
-# # ###########################################################
+#############################################################
+
+# x,y,z,r,p,y from mocap to base ( 6 parameters for pos and orient)
+qBase_0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+# default initial guess for joint offsets
+offset_0 = np.zeros(njoints)  # zero offsets
+
+# x,y,z,r,p,y from wrist to end_effector ( 6 parameters for pos and orient)
+qEE_0 = np.array([0., 0., 0., 0., 0., 0.])
+
+# variable vector 20 par = 6 base par + 8 joint off + 6 endeffector par
+var_0 = np.append(np.append(qBase_0, offset_0), qEE_0)
+nvars = var_0.shape[0]
 
 
 def cost_func(var, q, model, data, param,  PEEm):
     PEEe = get_PEE_var(var, q, model, data, param, noise=False)
-    return (PEEm-PEEe)
+    res_vect = PEEm - PEEe
+    return res_vect[0:(param['NbSample']*3)]
+    # return res_vect
 
 
 # calculate oMf up to the previous frame of end effector
@@ -118,11 +126,37 @@ param['IDX_TOOL'] = model.getFrameId('arm_7_link')
 
 LM_solve = least_squares(cost_func, var_0,  method='lm',
                          args=(q_exp, model, data, param,  PEEm_exp))
-# print("predefined offsets: ", np.append(np.zeros([6]), np.append(
-#     offset, [0.1, 0.1, 0.1, 0., 0., 0.])))
+
 print("solution: ", LM_solve.x)
 print("minimized cost function: ", LM_solve.cost)
 print("optimality: ", LM_solve.optimality)
+
+# calculate standard deviation of estimated parameter
+sigma_ro_sq = (LM_solve.cost**2) / \
+    (param['NbSample']*param['calibration_index'] - nvars)
+J = LM_solve.jac
+C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
+std_dev = []
+for i in range(nvars):
+    std_dev.append(np.sqrt(C_param[i, i]))
+
+# plot results
+PEEe_sol = get_PEE_var(LM_solve.x, q_exp, model, data, param)
+plt.figure()
+colors = ['b', 'g', 'r']
+data_label = ['pos_x', 'pos_y', 'pos_z']
+for i in range(3):
+    plt.plot(PEEe_sol[i*(param['NbSample']):(i+1) *
+             (param['NbSample'])], color=colors[i], label='estimated ' + data_label[i])
+    plt.plot(PEEm_exp[i*(param['NbSample']):(i+1) *
+             (param['NbSample'])], lineStyle='dashed', marker='o', color=colors[i], label='measured ' + data_label[i])
+    plt.legend(loc='upper left')
+plt.xlabel('Number of postures')
+plt.ylabel('XYZ coordinates of end effector frame (m) ')
+plt.title(
+    'Comparison of end effector positions by measurement of MoCap and estimation of calibrated model')
+plt.grid()
+plt.show()
 
 # # LINEARIZED model with iterative least square ###############
 # """
