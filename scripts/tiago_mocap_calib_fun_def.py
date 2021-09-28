@@ -90,7 +90,7 @@ def get_PEE_var(var, q, model, data, param, noise=False):
     q_temp = np.copy(q)
     for i in range(ncol):
         config = q_temp[i, :]
-        # convert rpy to quaternion for free-flyer (7  for free flyer)
+        # frame trasformation matrix from mocap to base
         p_base = var[0:3]
         rpy_base = var[3:6]
         R_base = pin.rpy.rpyToMatrix(rpy_base)
@@ -103,6 +103,7 @@ def get_PEE_var(var, q, model, data, param, noise=False):
         if noise:
             noise = np.random.normal(0, 0.001, var[0:8].shape)
             config[0:8] = config[0:8] + noise
+            
         pin.framesForwardKinematics(model, data, config)
         pin.updateFramePlacements(model, data)
 
@@ -112,7 +113,9 @@ def get_PEE_var(var, q, model, data, param, noise=False):
         R_ee = pin.rpy.rpyToMatrix(rpy_ee)
         last_placement = pin.SE3(R_ee, p_ee)
 
-        new_oMf = data.oMf[param['IDX_TOOL']]*last_placement
+        base_oMf = base_placement * \
+            data.oMf[param['IDX_TOOL']]  # from mocap to wirst
+        new_oMf = base_oMf*last_placement  # from wrist to end effector
 
         # create a matrix containing coordinates of end_effector
         PEE[0:3, i] = new_oMf.translation

@@ -157,7 +157,7 @@ def main():
 
         x_opt = np.zeros([8])
 
-        nlp = ipopt.problem(
+        nlp = cyipopt.problem(
             n=len(x0),
             m=len(cl),
             problem_obj=CIK_problem(data, model, param),
