@@ -25,6 +25,8 @@ from tools.regressor import eliminate_non_dynaffect
 from tools.qrdecomposition import get_baseParams, cond_num
 
 from tiago_mocap_calib_fun_def import *
+from tiago_simplified import check_tiago_autocollision
+from meshcat_viewer_wrapper import MeshcatVisualizer
 
 """
 # load robot
@@ -47,7 +49,6 @@ def main():
 
     NbGrid = 3
     NbSample = pow(NbGrid, 3)
-    # NbSample=2
     Nq = 8  # number of joints to be optimized
 
     # load robot
@@ -58,26 +59,6 @@ def main():
 
     data = robot.model.createData()
     model = robot.model
-
-    # create a dictionary of geometric parameters errors
-    joint_names = []
-    for i, name in enumerate(model.names):
-        joint_names += [name]
-
-    joint_names = joint_names[0:-4]  # remove the head and wheels joint
-
-    tpl_names = ["d_px", "d_py", "d_pz", "d_phix", "d_phiy", "d_phiz"]
-
-    geo_params = joint_off = []
-    for i in range(len(joint_names)):
-        for j in tpl_names:
-            geo_params.append(j + ("_%d" % i))
-        joint_off.append("off" + "_%d" % i)
-    phi_jo = [0] * len(joint_off)
-    phi_gp = [0] * len(geo_params)
-
-    joint_off = dict(zip(joint_off, phi_jo))
-    geo_params = dict(zip(geo_params, phi_gp))
 
     IDX_TOOL = model.getFrameId("ee_marker_joint")
 
@@ -96,21 +77,9 @@ def main():
     }
 
     # Generate feasible joint configuration
-    '''
-    cube_pose=[0.5, 0.1, 0.5]# position of the cube
-    cube_pose[len(cube_pose):] = [0, 0, 0, 1]# orientation of the cube
-    cube_dim=[0.2, 0.2, 0.2]
-
-    PEEd = np.linspace(cube_pose[0], cube_pose[0], NbSample)
-    PEEd = np.append(PEEd, np.linspace(cube_pose[1], cube_pose[1], NbSample))
-    PEEd = np.append(PEEd, np.linspace(
-        cube_pose[2]+cube_dim[2]/2, cube_pose[2]+cube_dim[2]/2, NbSample))
-
-    '''
-
-    cube_pose = [0.55, 0.0, 0.5]  # position of the cube
+    cube_pose = [0.65, 0.0, 0.7]  # position of the cube
     cube_pose[len(cube_pose):] = [0, 0, 0, 1]  # orientation of the cube
-    cube_dim = [0.45, 0.5, 0.5]
+    cube_dim = [0.4, 0.5, 0.4]
 
     PEEd_x = np.linspace(cube_pose[0] - cube_dim[0]/2,
                          cube_pose[0] + cube_dim[0]/2, NbGrid)
@@ -157,7 +126,7 @@ def main():
 
         x_opt = np.zeros([8])
 
-        nlp = cyipopt.problem(
+        nlp = cyipopt.Problem(
             n=len(x0),
             m=len(cl),
             problem_obj=CIK_problem(data, model, param),
@@ -167,11 +136,12 @@ def main():
             cu=cu,
         )
 
-        nlp.addOption(b'hessian_approximation', b'limited-memory')
-        nlp.addOption('max_iter', 2000)
-        nlp.addOption('tol', 1e-6)  # Tolerance on teh end-effector 3D position
+        nlp.add_option(b'hessian_approximation', b'limited-memory')
+        nlp.add_option('max_iter', 2000)
         # Tolerance on teh end-effector 3D position
-        nlp.addOption('print_level', 1)
+        nlp.add_option('tol', 1e-6)
+        # Tolerance on teh end-effector 3D position
+        nlp.add_option('print_level', 1)
 
         # starttime = time.time()
         x_opt, info = nlp.solve(x0)
@@ -205,13 +175,15 @@ def main():
             print("Iter {} Achieved end-effector position: {} ".format(iter+1, PEEe))
 
 
+# save designed configs to txt file
+    # dt = datetime.now()
+    # current_time = dt.strftime("%d_%b_%Y_%H%M")
+    # text_file = join(
+    #     dirname(dirname(str(abspath(__file__)))),
+    #     f"data/tiago_calib_exp_{current_time}.txt")
+    # json.dump(q_list, open(text_file, "w"))
+
 # PLEASE THANH find a way to put this in a function
-    dt = datetime.now()
-    current_time = dt.strftime("%d_%b_%Y_%H%M")
-    text_file = join(
-        dirname(dirname(str(abspath(__file__)))),
-        f"data/tiago_calib_exp_{current_time}.txt")
-    json.dump(q_list, open(text_file, "w"))
 
     q = np.reshape(q, (NbSample, model.nq), order='C')
     # robot.initViewer(loadModel=True)
@@ -244,20 +216,24 @@ def main():
 
 
 ##############
-
-    # # visualize
-    fig = plt.figure(figsize=(10, 7))
-    # ax = plt.axes(projection="3d")
-    plt.plot(q)
-    # plt.title("simple 3D scatter plot")
-    # plt.show()
-
+    # calcualte base regressor of kinematic errors model and the base parameters expressions
     R_b, params_base = Calculate_base_kinematics_regressor(
         q, model, data, param)
     # condition number
     cond_R = cond_num(R_b)
     print("condition number: ", cond_R)
     print(params_base)
+
+# check autocollision and display
+    check_tiago_autocollision(robot, q)
+    # display few configurations
+    viz = MeshcatVisualizer(
+        model=robot.model, collision_model=robot.collision_model, visual_model=robot.visual_model, url='classical'
+    )
+    time.sleep(3)
+    for i in range(20):
+        viz.display(q[i, :])
+        time.sleep(2)
 
 
 if __name__ == "__main__":
