@@ -32,11 +32,10 @@ robot = Robot(
 )
 model = robot.model
 data = robot.data
-joint_names = [name for i, name in enumerate(model.names)]
-geo_params = get_geoOffset(joint_names)
-joint_offs = get_jointOffset(joint_names)
+
 NbSample = 20
-njoints = 8
+NbJoint = 8
+active_jointID = range(1, 9)  # might change if base is free-flyer
 
 # create values storing dictionary 'param'
 param = {
@@ -50,15 +49,12 @@ param = {
     'calibration_index': 6
 }
 ################ simulated data ##########################
-# create artificial offsets
+# # create artificial offsets
 # offset_factor = 0.01
-# active_jointID = range(1, 9)
-# lb = [model.lowerPositionLimit[i] for i in active_jointID]
-# ub = [model.upperPositionLimit[i] for i in active_jointID]
-# offset = np.array([offset_factor*(ub[j] - lb[j]) *
+# joint_range = [model.upperPositionLimit[i] -
+#                model.lowerPositionLimit[i] for i in active_jointID]
+# offset = np.array([offset_factor*joint_range[i] *
 #                   (random.getrandbits(1)*2 - 1) for j in range(len(lb))])
-# print("predefined offsets: ", np.append(np.zeros([6]), np.append(
-#     offset, [0.1, 0.1, 0.1, 0., 0., 0.])))
 
 # # create sample configurations
 # q_sample = np.empty((param['NbSample'], model.nq))
@@ -74,22 +70,42 @@ param = {
 ################ experiment data ##########################
 # read csv file
 path = '/home/thanhndv212/Cooking/figaroh/data/exp_data_0924.csv'
-xyz_rotQuat = pd.read_csv(path, usecols=list(range(0, 7))).to_numpy()
-q_act = pd.read_csv(path, usecols=list(range(7, 15))).to_numpy()
-param['NbSample'] = q_act.shape[0]
-# measured end effector coordinates
-PEEm_exp = np.empty((param['calibration_index'], param['NbSample']))
-for i in range(param['NbSample']):
-    PEE_se3 = pin.XYZQUATToSE3(xyz_rotQuat[i, :])
-    PEEm_exp[0:3, i] = PEE_se3.translation
-    PEEm_exp[3:6, i] = pin.rpy.matrixToRpy(PEE_se3.rotation)
-PEEm_exp = PEEm_exp.flatten('C')
 
-# measure joint configs
-q_exp = np.empty((param['NbSample'], param['q0'].shape[0]))
-for i in range(param['NbSample']):
-    q_exp[i, 0:8] = q_act[i, :]
-    q_exp[i, 8:] = param['q0'][8:]
+
+def extract_expData(path_to_file):
+    # first 7 cols: coordinates xyzquat of end effector by mocap
+    xyz_rotQuat = pd.read_csv(
+        path_to_file, usecols=list(range(0, 7))).to_numpy()
+
+    # next 8 cols: joints position
+    q_act = pd.read_csv(path, usecols=list(range(7, 15))).to_numpy()
+
+    # delete the 4th data sample/outlier
+    xyz_rotQuat = np.delete(xyz_rotQuat, 4, 0)
+    q_act = np.delete(q_act, 4, 0)
+
+    param['NbSample'] = q_act.shape[0]
+
+    # extract measured end effector coordinates
+    PEEm_exp = np.empty((param['calibration_index'], param['NbSample']))
+    for i in range(param['NbSample']):
+        PEE_se3 = pin.XYZQUATToSE3(xyz_rotQuat[i, :])
+        PEEm_exp[0:3, i] = PEE_se3.translation
+        PEEm_exp[3:6, i] = pin.rpy.matrixToRpy(PEE_se3.rotation)
+    PEEm_exp = PEEm_exp.flatten('C')
+
+    # extract measured joint configs
+    q_exp = np.empty((param['NbSample'], param['q0'].shape[0]))
+    for i in range(param['NbSample']):
+        q_exp[i, 0:8] = q_act[i, :]
+        # ATTENTION: need to check robot.q0 vs TIAGo.q0
+        q_exp[i, 8:] = param['q0'][8:]
+    return PEEm_exp, q_exp
+
+
+PEEm_exp, q_exp = extract_expData(path)
+
+
 #############################################################
 
 
@@ -104,7 +120,7 @@ for i in range(param['NbSample']):
 qBase_0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
 # default initial guess for joint offsets
-offset_0 = np.zeros(njoints)  # zero offsets
+offset_0 = np.zeros(NbJoint)  # zero offsets
 
 # x,y,z,r,p,y from wrist to end_effector ( 6 parameters for pos and orient)
 qEE_0 = np.array([0., 0., 0., 0., 0., 0.])
@@ -139,9 +155,16 @@ C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
 std_dev = []
 for i in range(nvars):
     std_dev.append(np.sqrt(C_param[i, i]))
-
+print("standard deviation: ", std_dev)
 # plot results
+# PEE estimated by solution
 PEEe_sol = get_PEE_var(LM_solve.x, q_exp, model, data, param)
+# PEE estimated without offset arm 2 to arm 6
+offset_26 = np.copy(LM_solve.x)
+offset_26[2:7] = np.zeros(5)
+PEEe_nonoffs = get_PEE_var(offset_26, q_exp, model, data, param)
+
+
 plt.figure()
 colors = ['b', 'g', 'r']
 data_label = ['pos_x', 'pos_y', 'pos_z']
@@ -150,6 +173,8 @@ for i in range(3):
              (param['NbSample'])], color=colors[i], label='estimated ' + data_label[i])
     plt.plot(PEEm_exp[i*(param['NbSample']):(i+1) *
              (param['NbSample'])], lineStyle='dashed', marker='o', color=colors[i], label='measured ' + data_label[i])
+    plt.plot(PEEe_nonoffs[i*(param['NbSample']):(i+1) *
+             (param['NbSample'])], lineStyle='dashdot', marker='o', color=colors[i], label='estimated without offset ' + data_label[i])
     plt.legend(loc='upper left')
 plt.xlabel('Number of postures')
 plt.ylabel('XYZ coordinates of end effector frame (m) ')
