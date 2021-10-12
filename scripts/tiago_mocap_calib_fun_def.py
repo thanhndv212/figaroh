@@ -33,6 +33,24 @@ def display(robot, model,  q):
         robot.viewer.gui.applyConfiguration(name, pin.SE3ToXYZQUATtuple(oMi))
     robot.viewer.gui.refresh()
 
+# create values storing dictionary 'param'
+
+
+def get_param(robot, NbSample):
+    param = {
+        'q0': np.array(robot.q0),
+        'x_opt_prev': np.zeros([8]),
+        'IDX_TOOL': robot.model.getFrameId('ee_marker_joint'),
+        'NbSample': NbSample,
+        'eps': 1e-3,
+        'Ind_joint': np.arange(8),
+        'PLOT': 0,
+        'NbMarkers': 1,
+        'calib_model': 'full_params',  # 'joint_offset',  #
+        'calibration_index': 6
+    }
+    return param
+
 
 def get_jointOffset(joint_names):
     """ This function give a dictionary of joint offset parameters.
@@ -80,8 +98,72 @@ def add_eemarker_frame(frame_name, p, rpy, model, data):
     return ee_frame_id
 
 
+def cartesian_to_SE3(X):
+    ''' Convert (6,) cartesian coordinates to SE3
+        input: 1D (6,) numpy array
+        out put: SE3 type placement
+    '''
+    X = X.flatten('C')
+    translation = X[0:3]
+    rot_matrix = pin.rpy.rpyToMatrix(X[3:6])
+    placement = pin.SE3(rot_matrix, translation)
+    return placement
+
+
+def get_PEE_fullvar(var, q, model, data, param, noise=False):
+    """ Calculates corresponding cordinates of end_effector, given a set of joint configurations
+        var: consist of full 6 params for each joint (6+6xNbJoints+6xNbMarkers,) since scipy.optimize 
+        only takes 1D array variables.
+        Reshape to ((1 + NbJoints + NbMarkers, 6))
+        Use jointplacement to add offset to 6 axes of joint       
+
+    """
+    # calibration index = 3 or 6, indicating whether or not orientation incld.
+    nrow = param['calibration_index']
+    ncol = param['NbSample']
+    PEE = []
+    q_temp = np.copy(q)
+
+    # reshape variable vector to vectors of 6
+    NbFrames = 1 + 8 + param['NbMarkers']
+    var_rs = np.reshape(var, (NbFrames, 6))
+    for k in range(param['NbMarkers']):
+        markerId = 1 + 8 + k
+        PEE_marker = np.empty((nrow, ncol))
+        for i in range(ncol):
+            config = q_temp[i, :]
+
+            # # frame trasformation matrix from mocap to base
+            base_placement = cartesian_to_SE3(var_rs[1, :])
+
+            # update 8 joints
+            for j in range(8):
+                joint_placement = cartesian_to_SE3(var_rs[j+1, :])
+                model.jointPlacements[j].translation += joint_placement.translation
+                model.jointPlacements[j].rotation += joint_placement.rotation
+
+            pin.framesForwardKinematics(model, data, config)
+            pin.updateFramePlacements(model, data)
+
+            # # calculate oMf from wrist to the last frame
+            last_placement = cartesian_to_SE3(var_rs[markerId, :])
+            base_oMf = base_placement * \
+                data.oMf[param['IDX_TOOL']]  # from mocap to wirst
+            new_oMf = base_oMf*last_placement  # from wrist to end effector
+
+            # create a matrix containing coordinates of end_effector
+            PEE_marker[0:3, i] = new_oMf.translation
+            if nrow == 6:
+                PEE_rot = new_oMf.rotation
+                PEE_marker[3:6, i] = pin.rpy.matrixToRpy(PEE_rot)
+        PEE_marker = PEE_marker.flatten('C')
+        PEE = np.append(PEE, PEE_marker)
+    return PEE
+
+
 def get_PEE_var(var, q, model, data, param, noise=False):
     """ Calculates corresponding cordinates of end_effector, given a set of joint configurations
+        var: consist of geometric parameters from base->1st joint, joint offsets, wirst-> end effector
     """
     # calibration index = 3 or 6, indicating whether or not orientation incld.
     nrow = param['calibration_index']
@@ -103,7 +185,7 @@ def get_PEE_var(var, q, model, data, param, noise=False):
         if noise:
             noise = np.random.normal(0, 0.001, var[0:8].shape)
             config[0:8] = config[0:8] + noise
-            
+
         pin.framesForwardKinematics(model, data, config)
         pin.updateFramePlacements(model, data)
 
@@ -129,6 +211,7 @@ def get_PEE_var(var, q, model, data, param, noise=False):
 
 def get_PEE(offset_var, q, model, data, param, noise=False):
     """ Calculates corresponding cordinates of end_effector, given a set of joint configurations
+        offset_var: consist of only joint offsets
     """
     # calibration index = 3 or 6, indicating whether or not orientation incld.
     nrow = param['calibration_index']
@@ -198,12 +281,11 @@ def Calculate_kinematics_model(q_i, model, data, IDX_TOOL):
 #     J_b, params_baseJ = get_baseParams(J_e, params_eJ)
 #     return J_b, params_baseJ
 
-
 def Calculate_identifiable_kinematics_model(q, model, data, param):
     """ Calculate jacobian matrix and kinematic regressor and aggreating into one matrix,
         given a set of configurations or random configurations if not given.
     """
-    q_temp = q
+    q_temp = np.copy(q)
     # Note if no q id given then use random generation of q to determine the minimal kinematics model
     if np.any(q):
         MIN_MODEL = 0
@@ -230,32 +312,41 @@ def Calculate_base_kinematics_regressor(q, model, data, param):
     # obtain joint names
     joint_names = [name for i, name in enumerate(model.names)]
     geo_params = get_geoOffset(joint_names)
-
-    # particularly select columns/parameters corresponding to joint and 6 last parameters
-    actJoint_idx = [2, 11, 17, 23, 29, 35, 41, 47, 48, 49,
-                    50, 51, 52, 53]  # all on z axis - checked!!
-
-    # a dictionary of selected parameters
-    gp_listItems = list(geo_params.items())
-    geo_params_sel = []
-    for i in actJoint_idx:
-        geo_params_sel.append(gp_listItems[i])
-    geo_params_sel = dict(geo_params_sel)
-
     # calculate kinematic regressor with random configs
     Rrand = Calculate_identifiable_kinematics_model([], model, data, param)
-    # select columns corresponding to joint_idx
-    Rrand_sel = Rrand[:, actJoint_idx]
+    # calculate kinematic regressor with input configs
+    R = Calculate_identifiable_kinematics_model(q, model, data, param)
+
+    ############## only joint offset parameters ########
+    if param['calib_model'] == 'joint_offset':
+        # particularly select columns/parameters corresponding to joint and 6 last parameters
+        actJoint_idx = [2, 11, 17, 23, 29, 35, 41, 47, 48, 49,
+                        50, 51, 52, 53]  # all on z axis - checked!!
+
+        # a dictionary of selected parameters
+        gp_listItems = list(geo_params.items())
+        geo_params_sel = []
+        for i in actJoint_idx:
+            geo_params_sel.append(gp_listItems[i])
+        geo_params_sel = dict(geo_params_sel)
+
+        # select columns corresponding to joint_idx
+        Rrand_sel = Rrand[:, actJoint_idx]
+
+        # select columns corresponding to joint_idx
+        R_sel = R[:, actJoint_idx]
+
+    ############## full 6 parameters ###################
+    elif param['calib_model'] == 'full_params':
+        geo_params_sel = geo_params
+        Rrand_sel = Rrand
+        R_sel = R
 
     # obtain a list of column after apply QR decomposition
     Rrand_e, paramsrand_e = eliminate_non_dynaffect(
         Rrand_sel, geo_params_sel, tol_e=1e-6)
     idx_base = get_baseIndex(Rrand_e, paramsrand_e)
-    _, paramsrand_base = get_baseParams(Rrand_e, paramsrand_e)
-    # calculate kinematic regressor with random configs
-    R = Calculate_identifiable_kinematics_model(q, model, data, param)
-    # select columns corresponding to joint_idx
-    R_sel = R[:, actJoint_idx]
+    Rrand_b, paramsrand_base = get_baseParams(Rrand_e, paramsrand_e)
 
     # obtain a list of column after apply QR decomposition
     R_e, params_e = eliminate_non_dynaffect(
@@ -273,8 +364,9 @@ def Calculate_base_kinematics_regressor(q, model, data, param):
                         * j+param['NbSample'], 17])
             axs[j].set_ylabel(ylabel[j])
         # plt.show()
-
-    return R_b, paramsrand_base
+    _, s, _ = np.linalg.svd(Rrand_b)
+    print(R_b.shape, Rrand_b.shape)
+    return Rrand_b, R_b, paramsrand_base
 
 # %% IK process
 

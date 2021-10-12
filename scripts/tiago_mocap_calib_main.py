@@ -15,16 +15,28 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 import numpy as np
+import cyipopt
 
 import pandas as pd
 import csv
 import json
+import time
 
 from tools.robot import Robot
 from tools.regressor import eliminate_non_dynaffect
 from tools.qrdecomposition import get_baseParams, cond_num
 
-from tiago_mocap_calib_fun_def import *
+from tiago_mocap_calib_fun_def import (
+    get_param,
+    get_PEE_fullvar,
+    get_PEE_var,
+    get_geoOffset,
+    get_jointOffset,
+    get_PEE,
+    Calculate_kinematics_model,
+    Calculate_identifiable_kinematics_model,
+    Calculate_base_kinematics_regressor,
+    CIK_problem)
 from tiago_simplified import check_tiago_autocollision
 from meshcat_viewer_wrapper import MeshcatVisualizer
 
@@ -47,7 +59,7 @@ from meshcat_viewer_wrapper import MeshcatVisualizer
 
 def main():
 
-    NbGrid = 3
+    NbGrid = 3 
     NbSample = pow(NbGrid, 3)
     Nq = 8  # number of joints to be optimized
 
@@ -61,25 +73,12 @@ def main():
     model = robot.model
 
     IDX_TOOL = model.getFrameId("ee_marker_joint")
-
-    # Use a dictionnary to store most of the non model related parameters
-    # eps is the tolerance on the desired end effector 3D position accuracy
-    # Ind_joint index of the joint that sould be modified for/by the calibration process
-    param = {
-        'q0': np.array(robot.q0),
-        'x_opt_prev': np.zeros([8]),
-        'IDX_TOOL': model.getFrameId('ee_marker_joint'),
-        'NbSample': NbSample,
-        'eps': 1e-3,
-        'Ind_joint': np.arange(8),
-        'PLOT': 0,
-        'calibration_index': 6,
-    }
-
+    param = get_param(robot, NbSample)
+    
     # Generate feasible joint configuration
-    cube_pose = [0.65, 0.0, 0.7]  # position of the cube
+    cube_pose = [0.5, 0.0, 0.7]  # position of the cube
     cube_pose[len(cube_pose):] = [0, 0, 0, 1]  # orientation of the cube
-    cube_dim = [0.4, 0.5, 0.4]
+    cube_dim = [0.5, 0.5, 0.4]
 
     PEEd_x = np.linspace(cube_pose[0] - cube_dim[0]/2,
                          cube_pose[0] + cube_dim[0]/2, NbGrid)
@@ -217,23 +216,27 @@ def main():
 
 ##############
     # calcualte base regressor of kinematic errors model and the base parameters expressions
-    R_b, params_base = Calculate_base_kinematics_regressor(
+    Rrand_b, R_b, params_base = Calculate_base_kinematics_regressor(
         q, model, data, param)
     # condition number
-    cond_R = cond_num(R_b)
-    print("condition number: ", cond_R)
+    print("condition number: ", cond_num(R_b), cond_num(Rrand_b))
     print(params_base)
-
+    # text_file = join(
+    #     dirname(dirname(str(abspath(__file__)))),
+    #     f"data/tiago_full_calib_BP.txt")
+    # with open(text_file, 'w') as out:
+    #     for n in params_base:
+    #         out.write(n + '\n')
 # check autocollision and display
     check_tiago_autocollision(robot, q)
-    # display few configurations
-    viz = MeshcatVisualizer(
-        model=robot.model, collision_model=robot.collision_model, visual_model=robot.visual_model, url='classical'
-    )
-    time.sleep(3)
-    for i in range(20):
-        viz.display(q[i, :])
-        time.sleep(2)
+# display few configurations
+    # viz = MeshcatVisualizer(
+    #     model=robot.model, collision_model=robot.collision_model, visual_model=robot.visual_model, url='classical'
+    # )
+    # time.sleep(3)
+    # for i in range(20):
+    #     viz.display(q[i, :])
+    #     time.sleep(2)
 
 
 if __name__ == "__main__":
