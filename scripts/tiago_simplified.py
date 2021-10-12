@@ -145,7 +145,8 @@ def build_tiago_normal(robot):
 
 
 def check_tiago_autocollision(robot, q):
-    build_tiago_simplified(robot)
+    # build_tiago_simplified(robot)
+    build_tiago_normal(robot)
     collision = CollisionWrapper(robot, viz=None)
     for i in range(q.shape[0]):
         is_collision = collision.computeCollisions(q[i, :])
@@ -160,8 +161,8 @@ def main():
     time.sleep(3)
 
     robot = Robot("tiago_description/robots", "tiago_no_hand_mod.urdf")
-    build_tiago_simplified(robot)
-
+    # build_tiago_simplified(robot)
+    # build_tiago_normal(robot)
     # check autocollision
     q = np.empty((20, robot.q0.shape[0]))
     for i in range(20):
