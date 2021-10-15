@@ -15,13 +15,24 @@ import random
 
 import pandas as pd
 import csv
+import time
 
 from tools.robot import Robot
 from tools.regressor import eliminate_non_dynaffect
 from tools.qrdecomposition import get_baseParams, cond_num
 
-from tiago_mocap_calib_fun_def import get_PEE_var, get_geoOffset, get_jointOffset, add_eemarker_frame, get_PEE, Calculate_kinematics_model, Calculate_identifiable_kinematics_model
 
+from tiago_mocap_calib_fun_def import (
+    extract_expData,
+    get_param,
+    init_var,
+    get_PEE_fullvar,
+    get_PEE_var,
+    get_geoOffset,
+    get_jointOffset,
+    get_PEE,
+    Calculate_kinematics_model,
+    Calculate_identifiable_kinematics_model)
 
 # load robot
 
@@ -33,81 +44,40 @@ robot = Robot(
 model = robot.model
 data = robot.data
 
-NbSample = 20
-NbJoint = 8
-active_jointID = range(1, 9)  # might change if base is free-flyer
+NbSample = 50
+param = get_param(robot, NbSample)
 
-# create values storing dictionary 'param'
-param = {
-    'q0': np.array(robot.q0),
-    'x_opt_prev': np.zeros([8]),
-    'IDX_TOOL': model.getFrameId('ee_marker_joint'),
-    'NbSample': NbSample,
-    'eps': 1e-3,
-    'Ind_joint': np.arange(8),
-    'PLOT': 0,
-    'calibration_index': 6
-}
+dataSet = 'sample'  # choose data source 'sample' or 'experimental'
 ################ simulated data ##########################
-# # create artificial offsets
-# offset_factor = 0.01
-# joint_range = [model.upperPositionLimit[i] -
-#                model.lowerPositionLimit[i] for i in active_jointID]
-# offset = np.array([offset_factor*joint_range[i] *
-#                   (random.getrandbits(1)*2 - 1) for j in range(len(lb))])
+if dataSet == 'sample':
+    # create artificial offsets
+    var_sample, nvars_sample = init_var(param, mode=1)
+    print(var_sample)
+    # create sample configurations
+    q_sample = np.empty((param['NbSample'], model.nq))
+    for i in range(param['NbSample']):
+        config = pin.randomConfiguration(model)
+        config[8:] = param['q0'][8:]
+        q_sample[i, :] = config
 
-# # create sample configurations
-# q_sample = np.empty((param['NbSample'], model.nq))
-# for i in range(param['NbSample']):
-#     config = pin.randomConfiguration(model)
-#     config[8:] = param['q0'][8:]
-#     q_sample[i, :] = config
+    # create simulated end effector coordinates measures (PEEm)
+    PEEm_sample = get_PEE_fullvar(
+        var_sample, q_sample, model, data, param, noise=False)
 
-# # create simulated end effector coordinates measures (PEEm)
-# PEEm_sample = get_PEE(offset, q_sample, model, data, param, noise=False)
-############################################################
+    q_LM = np.copy(q_sample)
+    PEEm_LM = np.copy(PEEm_sample)
 
 ################ experiment data ##########################
-# read csv file
-path = '/home/thanhndv212/Cooking/figaroh/data/exp_data_0924.csv'
+elif dataSet == 'experimental':
+    # read csv file
+    path = '/home/thanhndv212/Cooking/figaroh/data/exp_data_0924.csv'
+    PEEm_exp, q_exp = extract_expData(path, param)
 
+    q_LM = np.copy(q_exp)
+    PEEm_LM = np.copy(PEEm_exp)
 
-def extract_expData(path_to_file):
-    # first 7 cols: coordinates xyzquat of end effector by mocap
-    xyz_rotQuat = pd.read_csv(
-        path_to_file, usecols=list(range(0, 7))).to_numpy()
-
-    # next 8 cols: joints position
-    q_act = pd.read_csv(path, usecols=list(range(7, 15))).to_numpy()
-
-    # delete the 4th data sample/outlier
-    xyz_rotQuat = np.delete(xyz_rotQuat, 4, 0)
-    q_act = np.delete(q_act, 4, 0)
-
-    param['NbSample'] = q_act.shape[0]
-
-    # extract measured end effector coordinates
-    PEEm_exp = np.empty((param['calibration_index'], param['NbSample']))
-    for i in range(param['NbSample']):
-        PEE_se3 = pin.XYZQUATToSE3(xyz_rotQuat[i, :])
-        PEEm_exp[0:3, i] = PEE_se3.translation
-        PEEm_exp[3:6, i] = pin.rpy.matrixToRpy(PEE_se3.rotation)
-    PEEm_exp = PEEm_exp.flatten('C')
-
-    # extract measured joint configs
-    q_exp = np.empty((param['NbSample'], param['q0'].shape[0]))
-    for i in range(param['NbSample']):
-        q_exp[i, 0:8] = q_act[i, :]
-        # ATTENTION: need to check robot.q0 vs TIAGo.q0
-        q_exp[i, 8:] = param['q0'][8:]
-    return PEEm_exp, q_exp
-
-
-PEEm_exp, q_exp = extract_expData(path)
-
-
-#############################################################
-
+for k in range(8):
+    print('to check if model modified', model.jointPlacements[k].translation)
 
 # # NON-LINEAR model with Levenberg-Marquardt #################
 # """
@@ -116,37 +86,28 @@ PEEm_exp, q_exp = extract_expData(path)
 # """
 #############################################################
 
-# x,y,z,r,p,y from mocap to base ( 6 parameters for pos and orient)
-qBase_0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-
-# default initial guess for joint offsets
-offset_0 = np.zeros(NbJoint)  # zero offsets
-
-# x,y,z,r,p,y from wrist to end_effector ( 6 parameters for pos and orient)
-qEE_0 = np.array([0., 0., 0., 0., 0., 0.])
-
-# variable vector 20 par = 6 base par + 8 joint off + 6 endeffector par
-var_0 = np.append(np.append(qBase_0, offset_0), qEE_0)
-nvars = var_0.shape[0]
+param['IDX_TOOL'] = model.getFrameId('arm_7_joint')
 
 
 def cost_func(var, q, model, data, param,  PEEm):
-    PEEe = get_PEE_var(var, q, model, data, param, noise=False)
+    PEEe = get_PEE_fullvar(var, q, model, data, param, noise=False)
     res_vect = PEEm - PEEe
-    return res_vect[0:(param['NbSample']*3)]
-    # return res_vect
+    # return res_vect[0:(param['NbSample']*3)]
+    return res_vect
 
+
+# initial guess
+var_0, nvars = init_var(param, mode=0)
 
 # calculate oMf up to the previous frame of end effector
-param['IDX_TOOL'] = model.getFrameId('arm_7_link')
-
 LM_solve = least_squares(cost_func, var_0,  method='lm',
-                         args=(q_exp, model, data, param,  PEEm_exp))
+                         args=(q_LM, model, data, param,  PEEm_LM))
 
 print("solution: ", LM_solve.x)
 print("minimized cost function: ", LM_solve.cost)
 print("optimality: ", LM_solve.optimality)
 
+'''
 # calculate standard deviation of estimated parameter
 sigma_ro_sq = (LM_solve.cost**2) / \
     (param['NbSample']*param['calibration_index'] - nvars)
@@ -158,13 +119,14 @@ for i in range(nvars):
 print("standard deviation: ", std_dev)
 # plot results
 # PEE estimated by solution
-PEEe_sol = get_PEE_var(LM_solve.x, q_exp, model, data, param)
+PEEe_sol = get_PEE_fullvar(LM_solve.x, q_exp, model, data, param)
 # PEE estimated without offset arm 2 to arm 6
 offset_26 = np.copy(LM_solve.x)
 offset_26[2:7] = np.zeros(5)
 PEEe_nonoffs = get_PEE_var(offset_26, q_exp, model, data, param)
+'''
 
-
+'''
 plt.figure()
 colors = ['b', 'g', 'r']
 data_label = ['pos_x', 'pos_y', 'pos_z']
@@ -182,7 +144,7 @@ plt.title(
     'Comparison of end effector positions by measurement of MoCap and estimation of calibrated model')
 plt.grid()
 plt.show()
-
+'''
 # # LINEARIZED model with iterative least square ###############
 # """
 #     - obtaining base regressor and base geometric parameters (BGP) offsets
@@ -222,35 +184,3 @@ plt.show()
 #     delta_p = np.dot(np.linalg.pinv(J_b_update), delta_X)
 #     # print("iteration %d: " % iter, delta_p)
 #     # print("norm: ", np.linalg.norm(delta_X))
-
-# print("predefined offsets: ", offset)
-
-####### template function #########
-'''
-# convert rpy to quaternion for free-flyer
-q = robot.q0
-p = np.array([0.1, 0.1, 0.1])
-rpy = np.array([0.1, 0.1, 0.1])
-R = pin.rpy.rpyToMatrix(rpy)
-some_placement = pin.SE3(R, p)
-q[:7] = pin.SE3ToXYZQUAT(some_placement)
-pin.framesForwardKinematics(model, data, q)
-# add frame
-p = np.array([0, 0, 0])
-rpy = np.array([0, 0, 0])
-R = pin.rpy.rpyToMatrix(rpy)
-frame_placement = pin.SE3(R, p)
-print(type(frame_placement))
-parent_joint = model.getJointId("arm_7_joint")
-prev_frame = model.getFrameId("arm_7_joint")
-ee_frame_id = model.addFrame(
-    pin.Frame("end_effector", parent_joint, prev_frame,
-              frame_placement, pin.FrameType(0), pin.Inertia.Zero()), False)
-pin.updateGlobalPlacements(model, data)
-# print(model.getFrameId('end_effector'))
-
-# check added frame
-for i, frame in enumerate(model.frames):
-    print('%d' % i, frame)
-print(len(data.oMf[79]))
-'''

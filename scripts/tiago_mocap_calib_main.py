@@ -59,22 +59,23 @@ from meshcat_viewer_wrapper import MeshcatVisualizer
 
 def main():
 
-    NbGrid = 3 
+    NbGrid = 10
     NbSample = pow(NbGrid, 3)
     Nq = 8  # number of joints to be optimized
 
     # load robot
     robot = Robot(
         "tiago_description/robots",
-        "tiago_no_hand_mod.urdf"
+        "tiago_no_hand.urdf"
     )
 
     data = robot.model.createData()
     model = robot.model
-
-    IDX_TOOL = model.getFrameId("ee_marker_joint")
+    print(model)
+    # IDX_TOOL = model.getFrameId("ee_marker_joint")
     param = get_param(robot, NbSample)
-    
+    param['IDX_TOOL'] = model.getFrameId('arm_1_joint')
+    '''
     # Generate feasible joint configuration
     cube_pose = [0.5, 0.0, 0.7]  # position of the cube
     cube_pose[len(cube_pose):] = [0, 0, 0, 1]  # orientation of the cube
@@ -184,7 +185,7 @@ def main():
 
 # PLEASE THANH find a way to put this in a function
 
-    q = np.reshape(q, (NbSample, model.nq), order='C')
+    q = np.reshape(q, (NbSample, model.nq), order='C')'''
     # robot.initViewer(loadModel=True)
     # gui = robot.viewer.gui
 
@@ -216,19 +217,20 @@ def main():
 
 ##############
     # calcualte base regressor of kinematic errors model and the base parameters expressions
+    q = []
     Rrand_b, R_b, params_base = Calculate_base_kinematics_regressor(
         q, model, data, param)
     # condition number
     print("condition number: ", cond_num(R_b), cond_num(Rrand_b))
     print(params_base)
-    # text_file = join(
-    #     dirname(dirname(str(abspath(__file__)))),
-    #     f"data/tiago_full_calib_BP.txt")
-    # with open(text_file, 'w') as out:
-    #     for n in params_base:
-    #         out.write(n + '\n')
+    text_file = join(
+        dirname(dirname(str(abspath(__file__)))),
+        f"data/tiago_full_calib_BP.txt")
+    with open(text_file, 'w') as out:
+        for n in params_base:
+            out.write(n + '\n')
 # check autocollision and display
-    check_tiago_autocollision(robot, q)
+    # check_tiago_autocollision(robot, q)
 # display few configurations
     # viz = MeshcatVisualizer(
     #     model=robot.model, collision_model=robot.collision_model, visual_model=robot.visual_model, url='classical'

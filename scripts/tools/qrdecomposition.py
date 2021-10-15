@@ -3,6 +3,11 @@ import numpy as np
 from numpy.linalg import norm, solve
 from scipy import linalg, signal
 
+# epsilon = np.finfo(float).eps  # machine epsilon
+# tolpal = W_e.shape[0]*abs(np.diag(R).max()) * \
+#     epsilon  # rank revealing tolerance
+tolpal = 1e-8
+
 
 def QR_pivoting(tau, W_e, params_r):
     """This function calculates QR decompostion with pivoting, finds rank of regressor,
@@ -23,10 +28,7 @@ def QR_pivoting(tau, W_e, params_r):
 
     # find rank of regressor
     numrank_W = 0
-    epsilon = np.finfo(float).eps  # machine epsilon
-    tolpal = W_e.shape[0]*abs(np.diag(R).max()) * \
-        epsilon  # rank revealing tolerance
-    # tolpal = 0.02
+
     for i in range(np.diag(R).shape[0]):
         if abs(np.diag(R)[i]) > tolpal:
             continue
@@ -96,10 +98,7 @@ def double_QR(tau, W_e, params_r, params_std=None):
     idx_regroup = []
 
     # find rank of regressor
-    epsilon = np.finfo(float).eps  # machine epsilon
-    tolpal = W_e.shape[0]*abs(np.diag(R).max()) * \
-        epsilon  # rank revealing tolerance
-    # tolpal = 0.02
+
     for i in range(len(params_r)):
         if abs(np.diag(R)[i]) > tolpal:
             idx_base.append(i)
@@ -201,10 +200,6 @@ def get_baseParams(W_e, params_r):
     idx_regroup = []
 
     # find rank of regressor
-    epsilon = np.finfo(float).eps  # machine epsilon
-    tolpal = W_e.shape[0]*abs(np.diag(R).max()) * \
-        epsilon  # rank revealing tolerance
-    # tolpal = 0.02
     for i in range(len(params_r)):
         if abs(np.diag(R)[i]) > tolpal:
             idx_base.append(i)
@@ -280,17 +275,13 @@ def get_baseIndex(W_e, params_r):
             Output: idx_base: a tuple of indices of only independent parameters.
     """
     Q, R = np.linalg.qr(W_e)
-
+    print(np.diag(R))
     assert np.diag(R).shape[0] == len(
         params_r
     ), "params_r does not have same length with R"
 
     idx_base = []
     epsilon = np.finfo(float).eps  # machine epsilon
-    tolpal = W_e.shape[0]*abs(np.diag(R).max()) * \
-        epsilon  # rank revealing tolerance
-
-    # tolpal = 0.02
     for i in range(len(params_r)):
         if abs(np.diag(R)[i]) > tolpal:
             # print(abs(np.diag(R)[i]))
