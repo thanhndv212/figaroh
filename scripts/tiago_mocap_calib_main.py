@@ -59,25 +59,27 @@ from meshcat_viewer_wrapper import MeshcatVisualizer
 
 def main():
 
-    NbGrid = 10
+    NbGrid = 4
     NbSample = pow(NbGrid, 3)
     Nq = 8  # number of joints to be optimized
 
     # load robot
     robot = Robot(
         "tiago_description/robots",
-        "tiago_no_hand.urdf"
+        "tiago_no_hand_mod.urdf"
     )
 
     data = robot.model.createData()
     model = robot.model
     print(model)
-    # IDX_TOOL = model.getFrameId("ee_marker_joint")
-    param = get_param(robot, NbSample)
-    param['IDX_TOOL'] = model.getFrameId('arm_1_joint')
-    '''
+    param = get_param(robot, NbSample, TOOL_NAME='ee_marker_joint')
+    IDX_TOOL = param['IDX_TOOL']
+    for k in range(param['NbJoint']+1):
+        print('to check if model modified ', model.names[k], ": ",
+              model.jointPlacements[k].translation)
+
     # Generate feasible joint configuration
-    cube_pose = [0.5, 0.0, 0.7]  # position of the cube
+    cube_pose = [0.65, 0.0, 0.7]  # position of the cube
     cube_pose[len(cube_pose):] = [0, 0, 0, 1]  # orientation of the cube
     cube_dim = [0.5, 0.5, 0.4]
 
@@ -176,61 +178,35 @@ def main():
 
 
 # save designed configs to txt file
-    # dt = datetime.now()
-    # current_time = dt.strftime("%d_%b_%Y_%H%M")
-    # text_file = join(
-    #     dirname(dirname(str(abspath(__file__)))),
-    #     f"data/tiago_calib_exp_{current_time}.txt")
-    # json.dump(q_list, open(text_file, "w"))
+    dt = datetime.now()
+    current_time = dt.strftime("%d_%b_%Y_%H%M")
+    text_file = join(
+        dirname(dirname(str(abspath(__file__)))),
+        f"data/tiago_calib_exp_{current_time}.txt")
+    json.dump(q_list, open(text_file, "w"))
 
-# PLEASE THANH find a way to put this in a function
+    q = np.reshape(q, (NbSample, model.nq), order='C')
+# check autocollision and display
+    check_tiago_autocollision(robot, q)
 
-    q = np.reshape(q, (NbSample, model.nq), order='C')'''
-    # robot.initViewer(loadModel=True)
-    # gui = robot.viewer.gui
-
-    # for iter in range(NbSample):
-
-    #     #pin.forwardKinematics(model,  data, q[iter,:])
-    #     #pin.updateFramePlacements(model,  data)
-
-    #     display(robot,model, q[iter,:])
-
-    #     gui.addBox("world/box_1",cube_dim[0], cube_dim[1],cube_dim[2],[0, 1, 0, 0.4])
-    #     corner_cube=[cube_pose[0],cube_pose[1],cube_pose[2]]
-    #     corner_cube[len(corner_cube):] = [0, 0, 0, 1]
-    #     gui.applyConfiguration("world/box_1",cube_pose)
-
-    #     param['iter'] = iter+1
-    #     PEEd_iter = PEEd[[param['iter']-1, NbSample +
-    #                       param['iter']-1, 2*NbSample+param['iter']-1]]
-
-    #     gui.addSphere("world/sph_1", 0.02, [1., 0., 0., 0.75])
-    #     gui.applyConfiguration("world/sph_1", [PEEd_iter[0],PEEd_iter[1],PEEd_iter[2]] + [0, 0, 0, 1])
-
-    #     #print(iter)
-    #     #print(PEEd_iter)
-
-    #     gui.refresh()
-    #     programPause = input("Press the <ENTER> to continue to next posture...")
-
-
+    # q = []  # testing with random configurations
 ##############
     # calcualte base regressor of kinematic errors model and the base parameters expressions
-    q = []
-    Rrand_b, R_b, params_base = Calculate_base_kinematics_regressor(
+    Rrand_b, R_b, params_base, params_e = Calculate_base_kinematics_regressor(
         q, model, data, param)
     # condition number
     print("condition number: ", cond_num(R_b), cond_num(Rrand_b))
-    print(params_base)
+
+    print("reduced parameters: ", params_e)
+
+    print("%d base parameters: " % len(params_base), params_base)
     text_file = join(
         dirname(dirname(str(abspath(__file__)))),
         f"data/tiago_full_calib_BP.txt")
     with open(text_file, 'w') as out:
         for n in params_base:
             out.write(n + '\n')
-# check autocollision and display
-    # check_tiago_autocollision(robot, q)
+
 # display few configurations
     # viz = MeshcatVisualizer(
     #     model=robot.model, collision_model=robot.collision_model, visual_model=robot.visual_model, url='classical'

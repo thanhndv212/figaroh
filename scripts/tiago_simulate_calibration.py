@@ -24,6 +24,7 @@ from tools.qrdecomposition import get_baseParams, cond_num
 
 from tiago_mocap_calib_fun_def import (
     extract_expData,
+    extract_expData4Mkr,
     get_param,
     init_var,
     get_PEE_fullvar,
@@ -32,7 +33,8 @@ from tiago_mocap_calib_fun_def import (
     get_jointOffset,
     get_PEE,
     Calculate_kinematics_model,
-    Calculate_identifiable_kinematics_model)
+    Calculate_identifiable_kinematics_model,
+    Calculate_base_kinematics_regressor)
 
 # load robot
 
@@ -45,14 +47,14 @@ model = robot.model
 data = robot.data
 
 NbSample = 50
-param = get_param(robot, NbSample)
+param = get_param(robot, NbSample, TOOL_NAME='ee_marker_joint')
 
-dataSet = 'sample'  # choose data source 'sample' or 'experimental'
+dataSet = 'experimental'  # choose data source 'sample' or 'experimental'
 ################ simulated data ##########################
 if dataSet == 'sample':
     # create artificial offsets
     var_sample, nvars_sample = init_var(param, mode=1)
-    print(var_sample)
+    print("%d var_sample: " % nvars_sample, var_sample)
     # create sample configurations
     q_sample = np.empty((param['NbSample'], model.nq))
     for i in range(param['NbSample']):
@@ -69,16 +71,17 @@ if dataSet == 'sample':
 
 ################ experiment data ##########################
 elif dataSet == 'experimental':
-    # read csv file
-    path = '/home/thanhndv212/Cooking/figaroh/data/exp_data_0924.csv'
-    PEEm_exp, q_exp = extract_expData(path, param)
+    # read csv fileT
+    path = '/home/thanhndv212/Cooking/figaroh/data/exp_data_oct.csv'
+    PEEm_exp, q_exp = extract_expData4Mkr(path, param)
 
     q_LM = np.copy(q_exp)
     PEEm_LM = np.copy(PEEm_exp)
-
-for k in range(8):
-    print('to check if model modified', model.jointPlacements[k].translation)
-
+    print(PEEm_LM.shape)
+for k in range(param['NbJoint']+1):
+    print('to check if model modified',
+          model.names[k], ": ", model.jointPlacements[k].translation)
+print('updated number of samples: ', param['NbSample'])
 # # NON-LINEAR model with Levenberg-Marquardt #################
 # """
 #     - minimize the difference between measured coordinates of end-effector
@@ -86,7 +89,7 @@ for k in range(8):
 # """
 #############################################################
 
-param['IDX_TOOL'] = model.getFrameId('arm_7_joint')
+# param['IDX_TOOL'] = model.getFrameId('arm_7_joint')
 
 
 def cost_func(var, q, model, data, param,  PEEm):
@@ -98,7 +101,7 @@ def cost_func(var, q, model, data, param,  PEEm):
 
 # initial guess
 var_0, nvars = init_var(param, mode=0)
-
+print("initial guess: ", var_0)
 # calculate oMf up to the previous frame of end effector
 LM_solve = least_squares(cost_func, var_0,  method='lm',
                          args=(q_LM, model, data, param,  PEEm_LM))
@@ -107,36 +110,53 @@ print("solution: ", LM_solve.x)
 print("minimized cost function: ", LM_solve.cost)
 print("optimality: ", LM_solve.optimality)
 
-'''
+
 # calculate standard deviation of estimated parameter
-sigma_ro_sq = (LM_solve.cost**2) / \
-    (param['NbSample']*param['calibration_index'] - nvars)
-J = LM_solve.jac
-C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
-std_dev = []
-for i in range(nvars):
-    std_dev.append(np.sqrt(C_param[i, i]))
-print("standard deviation: ", std_dev)
+# sigma_ro_sq = (LM_solve.cost**2) / \
+#     (param['NbSample']*param['calibration_index'] - nvars)
+# J = LM_solve.jac
+# C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
+# std_dev = []
+# for i in range(nvars):
+#     std_dev.append(np.sqrt(C_param[i, i]))
+# print("standard deviation: ", std_dev)
 # plot results
 # PEE estimated by solution
-PEEe_sol = get_PEE_fullvar(LM_solve.x, q_exp, model, data, param)
+PEEe_sol = get_PEE_fullvar(LM_solve.x, q_LM, model, data, param)
 # PEE estimated without offset arm 2 to arm 6
-offset_26 = np.copy(LM_solve.x)
-offset_26[2:7] = np.zeros(5)
-PEEe_nonoffs = get_PEE_var(offset_26, q_exp, model, data, param)
-'''
+# offset_26 = np.copy(LM_solve.x)
+# offset_26[2:7] = np.zeros(5)
+# PEEe_nonoffs = get_PEE_var(offset_26, q_exp, model, data, param)
+q = []  # testing with random configurations
+##############
+# calcualte base regressor of kinematic errors model and the base parameters expressions
+Rrand_b, R_b, params_base, params_e = Calculate_base_kinematics_regressor(
+    q, model, data, param)
+PEE_names = []
+for i in range(param['NbMarkers']):
+    PEE_names.extend(['pEEx_%d' % (i+1), 'pEEy_%d' % (i+1), 'pEEz_%d' % (i+1)])
+params_name = params_base + PEE_names
+plt.figure(figsize=(7.5, 6))
+# plt.plot(var_sample[param['calibration_index']:-
+#          param['NbMarkers']*param['calibration_index']])
+# plt.plot(LM_solve.x[param['calibration_index']:-
+#          param['NbMarkers']*param['calibration_index']])
+# plt.barh(params_name, (var_sample-LM_solve.x), align='center')
+plt.barh(params_name, LM_solve.x, align='center')
 
-'''
-plt.figure()
+plt.grid()
+# plt.show()
+plt.figure(2)
+
 colors = ['b', 'g', 'r']
 data_label = ['pos_x', 'pos_y', 'pos_z']
 for i in range(3):
     plt.plot(PEEe_sol[i*(param['NbSample']):(i+1) *
              (param['NbSample'])], color=colors[i], label='estimated ' + data_label[i])
-    plt.plot(PEEm_exp[i*(param['NbSample']):(i+1) *
+    plt.plot(PEEm_LM[i*(param['NbSample']):(i+1) *
              (param['NbSample'])], lineStyle='dashed', marker='o', color=colors[i], label='measured ' + data_label[i])
-    plt.plot(PEEe_nonoffs[i*(param['NbSample']):(i+1) *
-             (param['NbSample'])], lineStyle='dashdot', marker='o', color=colors[i], label='estimated without offset ' + data_label[i])
+    # plt.plot(PEEe_nonoffs[i*(param['NbSample']):(i+1) *
+    #          (param['NbSample'])], lineStyle='dashdot', marker='o', color=colors[i], label='estimated without offset ' + data_label[i])
     plt.legend(loc='upper left')
 plt.xlabel('Number of postures')
 plt.ylabel('XYZ coordinates of end effector frame (m) ')
@@ -144,7 +164,7 @@ plt.title(
     'Comparison of end effector positions by measurement of MoCap and estimation of calibrated model')
 plt.grid()
 plt.show()
-'''
+
 # # LINEARIZED model with iterative least square ###############
 # """
 #     - obtaining base regressor and base geometric parameters (BGP) offsets

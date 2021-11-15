@@ -1,0 +1,32 @@
+d_px_0 + 1.0*d_py_1 + 0.014*d_phiz_1 + 0.014*d_phiy_2
+d_py_0 - 1.0*d_px_1 - 0.15505*d_phiz_1 - 0.15505*d_phiy_2
+d_pz_0 + 1.0*d_pz_1 + 1.0*d_py_2
+d_phix_0
+d_phiy_0
+d_phiz_0 + 1.0*d_phiz_1 + 1.0*d_phiy_2
+d_phix_1
+d_phiy_1
+d_px_2 + 0.0165*d_phiy_2
+d_pz_2 + 0.125*d_phiy_2 - 1.0*d_py_3
+d_phix_2
+d_phiz_2 - 1.0*d_phiy_3
+d_px_3 + 0.0895*d_phiy_3
+d_pz_3 + 1.0*d_px_4
+d_phix_3
+d_phiz_3 + 1.0*d_phix_4
+d_py_4 - 0.027*d_phix_4
+d_pz_4 + 0.02*d_phix_4 + 1.0*d_px_5
+d_phiy_4
+d_phiz_4 + 1.0*d_phix_5
+d_py_5 + 0.162*d_phix_5
+d_pz_5 - 0.02*d_phix_5 + 1.0*d_px_6
+d_phiy_5
+d_phiz_5 + 1.0*d_phix_6
+d_py_6
+d_pz_6 + 1.0*d_py_7
+d_phiy_6
+d_phiz_6 + 1.0*d_phiy_7
+d_px_7
+d_pz_7
+d_phix_7
+d_phiz_7
