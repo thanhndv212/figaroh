@@ -65,14 +65,15 @@ def display(robot, model,  q):
     #     programPause = input("Press the <ENTER> to continue to next posture...")
 
 
-def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=2,  calib_model='full_params', calib_idx=3):
+def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,  calib_model='full_params', calib_idx=3):
     tool_FrameId = robot.model.getFrameId(TOOL_NAME)
     parentJoint2Tool_Id = robot.model.frames[tool_FrameId].parent
     NbJoint = parentJoint2Tool_Id  # joint #0 is  universe
     print("number of active joint: ", NbJoint)
     print("tool name: ", TOOL_NAME)
     print("parent joint of tool frame: ", robot.model.names[NbJoint])
-
+    print("number of markers: ", NbMarkers)
+    print("calibration model: ", calib_model)
     param = {
         'q0': np.array(robot.q0),
         'x_opt_prev': np.zeros([NbJoint]),
@@ -169,15 +170,23 @@ def extract_expData(path_to_file, param):
 
 def extract_expData4Mkr(path_to_file, param):
     # first 12 cols: xyz positions of 4 markers
-    xyz_4Mkr = pd.read_csv(
-        path_to_file, usecols=list(range(0, param['NbMarkers']*3))).to_numpy()
 
+    # list of "bad" data samples
+    # del_list = [4, 8, -3, -1] # calib_data_oct
+    # del_list = [2, 26, 39]  # calib_nov_64
+    del_list = [1, 2, 4, 5, 10, 13, 19, 22, 23, 24, 28, 33, -3, -2]  # clean Nov 30
+    # del_list = [13, 28]  # no clean Nov 30
+    xyz_4Mkr = np.delete(pd.read_csv(
+        path_to_file, usecols=list(range(0, param['NbMarkers']*3))).to_numpy(), del_list, axis=0)
+    print('csv read', xyz_4Mkr.shape)
     # next 8 cols: joints position
-    q_act = pd.read_csv(path_to_file, usecols=list(range(12, 20))).to_numpy()
+    q_act = np.delete(pd.read_csv(path_to_file, usecols=list(
+        range(12, 20))).to_numpy(), del_list, axis=0)
     param['NbSample'] = q_act.shape[0]
 
     # extract measured end effector coordinates
     PEEm_exp = xyz_4Mkr.T
+    print(PEEm_exp.shape)
     PEEm_exp = PEEm_exp.flatten('C')
     # extract measured joint configs
     q_exp = np.empty((param['NbSample'], param['q0'].shape[0]))
@@ -204,26 +213,31 @@ def cartesian_to_SE3(X):
 
 
 def init_var(param, mode=0, base_model=True):
-    ''' Creates variable vector, mode = 0/1 for zero values/nonzero-random values
+    ''' Creates variable vector, mode = 0: initial guess, mode = 1: predefined values(randomized)
     '''
     # x,y,z,r,p,y from mocap to base ( 6 parameters for pos and orient)
-    # 3D base frame
-    # qBase_0 = np.array([0.1, 0.1, 0.1])
 
-    # 6D base frame
-    qBase_0 = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
-
-    # parameter variation at joints
     if mode == 0:
+        # 6D base frame
+        qBase_0 = np.array([0.1, 0.1, 0.1, 0., 0., 0.])
+        # parameter variation at joints
         if param['calib_model'] == 'joint_ offset':
             offset_0 = np.zeros(param['NbJoint'])
         elif param['calib_model'] == 'full_params':
             offset_0 = np.zeros(param['NbJoint']*6)
+        # markers variables
+        qEE_0 = np.full((param['NbMarkers']*3,), 0.0)
+
     elif mode == 1:
+        # 6D base frame
+        qBase_0 = np.array([0.5, 0.0, 0.3, 0., 0., 0.])
+        # parameter variation at joints
         if param['calib_model'] == 'joint_ offset':
-            offset_0 = np.random.uniform(-0.02, 0.02, (param['NbJoint'],))
+            offset_0 = np.random.uniform(-0.01, 0.01, (param['NbJoint'],))
         elif param['calib_model'] == 'full_params':
-            offset_0 = np.random.uniform(-0.02, 0.02, (param['NbJoint']*6,))
+            offset_0 = np.random.uniform(-0.01, 0.01, (param['NbJoint']*6,))
+        # markers variables
+        qEE_0 = np.full((param['NbMarkers']*3,), 0)
 
     # list of parameters to be set as zero
     # torso_list = [0, 1, 2, 3, 4, 5]
@@ -252,7 +266,6 @@ def init_var(param, mode=0, base_model=True):
     if base_model == True:
         offset_0 = np.delete(offset_0, zero_list, None)
         # x,y,z,r,p,y from wrist to end_effector ( 6 parameters for pos and orient)
-    qEE_0 = np.full((param['NbMarkers']*3,), 0.1)
 
     # variable vector 20 par = 6 base par + 8 joint off + 6 endeffector par
     var = np.append(np.append(qBase_0, offset_0), qEE_0)
@@ -281,9 +294,6 @@ def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True):
         var_rs = np.reshape(var, (NbFrames, 6))
     elif base_model == True:
         var_rs = np.zeros((NbFrames, 6))
-        # base frame
-        # 3D base frame
-        # var_rs[0, 0:3] = var[0:3]
 
         # 6D base frame
         var_rs[0, 0:6] = var[0:6]
@@ -396,8 +406,13 @@ def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True):
             # update 8 joints
             for j in range(param['NbJoint']):
                 joint_placement = cartesian_to_SE3(var_rs[j+1, :])
-                model.jointPlacements[j].translation += joint_placement.translation
-                model.jointPlacements[j].rotation += joint_placement.rotation
+                # model.jointPlacements[j].translation += joint_placement.translation
+                # model.jointPlacements[j].rotation += joint_placement.rotation (matrix addition => possibly wrong)
+                model.jointPlacements[j].translation += var_rs[j+1, 0:3]
+                new_rpy = pin.rpy.matrixToRpy(
+                    model.jointPlacements[j].rotation) + var_rs[j+1, 3:6]
+                model.jointPlacements[j].rotation = pin.rpy.rpyToMatrix(
+                    new_rpy)
 
             pin.framesForwardKinematics(model, data, config)
             pin.updateFramePlacements(model, data)
@@ -425,8 +440,13 @@ def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True):
             # update 8 joints
             for j in range(param['NbJoint']):
                 joint_placement = cartesian_to_SE3(var_rs[j+1, :])
-                model.jointPlacements[j].translation -= joint_placement.translation
-                model.jointPlacements[j].rotation -= joint_placement.rotation
+                # model.jointPlacements[j].translation -= joint_placement.translation
+                # model.jointPlacements[j].rotation -= joint_placement.rotation (matrix addition => possibly wrong)
+                model.jointPlacements[j].translation -= var_rs[j+1, 0:3]
+                update_rpy = pin.rpy.matrixToRpy(
+                    model.jointPlacements[j].rotation) - var_rs[j+1, 3:6]
+                model.jointPlacements[j].rotation = pin.rpy.rpyToMatrix(
+                    update_rpy)
 
         PEE_marker = PEE_marker.flatten('C')
         PEE = np.append(PEE, PEE_marker)
