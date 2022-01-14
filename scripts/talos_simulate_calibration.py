@@ -22,7 +22,7 @@ from tools.regressor import eliminate_non_dynaffect
 from tools.qrdecomposition import get_baseParams, cond_num
 
 
-from tiago_mocap_calib_fun_def import (
+from tiago_mocap_calib_fun_def_VC import (
     extract_expData,
     extract_expData4Mkr,
     get_param,
@@ -36,7 +36,7 @@ from tiago_mocap_calib_fun_def import (
     Calculate_identifiable_kinematics_model,
     Calculate_base_kinematics_regressor)
 
-# 1/ Load robot model and create a dictionary containing reserved constants
+# Parameter setting
 
 robot = Robot(
     "tiago_description/robots",
@@ -51,7 +51,7 @@ param = get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=4)
 
 #############################################################
 
-# 2/ Base parameters calculation
+# Base parameters calculation
 q_rand = []
 Rrand_b, R_b, params_base, params_e = Calculate_base_kinematics_regressor(
     q_rand, model, data, param)
@@ -65,7 +65,7 @@ print(params_name)
 
 #############################################################
 
-# 3/ Data collection/generation
+# Data collection
 dataSet = 'experimental'  # choose data source 'sample' or 'experimental'
 if dataSet == 'sample':
     # create artificial offsets
@@ -101,7 +101,7 @@ print('updated number of samples: ', param['NbSample'])
 
 #############################################################
 
-# 3'/ Data inspecting (for experimental data)
+# Data inspecting
 PEEm_xyz = PEEm_LM.reshape((param['NbMarkers']*3, param["NbSample"]))
 print(PEEm_xyz.shape)
 
@@ -137,9 +137,6 @@ dist_axs[1].axhline(np.mean(err_PEE[1, :]), 0,
                     param['NbSample'] - 1, color='r', linestyle='--')
 
 #############################################################
-
-# 4/ Given a model and configurations (input), end effector positions/locations 
-# (output), solve an optimization problem to find offset params as variables
 
 # # NON-LINEAR model with Levenberg-Marquardt #################
 """

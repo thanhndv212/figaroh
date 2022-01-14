@@ -37,8 +37,8 @@ from tiago_mocap_calib_fun_def import (
     Calculate_identifiable_kinematics_model,
     Calculate_base_kinematics_regressor,
     CIK_problem)
-from tiago_simplified import check_tiago_autocollision
-from meshcat_viewer_wrapper import MeshcatVisualizer
+# from tiago_simplified import check_tiago_autocollision
+# from meshcat_viewer_wrapper import MeshcatVisualizer
 
 """
 # load robot
@@ -59,11 +59,11 @@ from meshcat_viewer_wrapper import MeshcatVisualizer
 
 def main():
 
-    NbGrid = 4
+    NbGrid = 3
     NbSample = pow(NbGrid, 3)
     Nq = 8  # number of joints to be optimized
 
-    # load robot
+# 1/ Load robot model and create a dictionary containing reserved constants
     robot = Robot(
         "tiago_description/robots",
         "tiago_no_hand_mod.urdf"
@@ -78,7 +78,7 @@ def main():
         print('to check if model modified ', model.names[k], ": ",
               model.jointPlacements[k].translation)
 
-    # Generate feasible joint configuration
+# 2/ Generate cartesian poses
     cube_pose = [0.65, 0.0, 0.7]  # position of the cube
     cube_pose[len(cube_pose):] = [0, 0, 0, 1]  # orientation of the cube
     cube_dim = [0.5, 0.5, 0.4]
@@ -96,14 +96,18 @@ def main():
                 idx = NbGrid*NbGrid*i + NbGrid*j + k
                 PEEd_2d[:, idx] = np.array([PEEd_x[i], PEEd_y[j], PEEd_z[k]])
 
-    # # visualize
+# 2.1/ visualize cartesian poses
     fig = plt.figure(figsize=(10, 7))
     ax = plt.axes(projection="3d")
     ax.scatter3D(PEEd_2d[0, :], PEEd_2d[1, :], PEEd_2d[2, :], color="green")
     plt.title("simple 3D scatter plot")
     # plt.show()
 
+# 3/ Solve ipopt IK problem to generate joint configuration from given poses
+
+    # desired poses
     PEEd = PEEd_2d.flatten('C')
+
     param['PEEd'] = PEEd
     param['eps_gradient'] = 1e-6
 
@@ -118,6 +122,8 @@ def main():
     starttime = time.time()
     q = []
     q_list = []
+
+    # solve one ipopt for each pose (each sample)
     for iter in range(NbSample):
 
         param['iter'] = iter+1
@@ -177,17 +183,17 @@ def main():
             print("Iter {} Achieved end-effector position: {} ".format(iter+1, PEEe))
 
 
-# save designed configs to txt file
-    dt = datetime.now()
-    current_time = dt.strftime("%d_%b_%Y_%H%M")
-    text_file = join(
-        dirname(dirname(str(abspath(__file__)))),
-        f"data/tiago_calib_exp_{current_time}.txt")
-    json.dump(q_list, open(text_file, "w"))
+# # save designed configs to txt file
+#     dt = datetime.now()
+#     current_time = dt.strftime("%d_%b_%Y_%H%M")
+#     text_file = join(
+#         dirname(dirname(str(abspath(__file__)))),
+#         f"data/tiago_calib_exp_{current_time}.txt")
+#     json.dump(q_list, open(text_file, "w"))
 
     q = np.reshape(q, (NbSample, model.nq), order='C')
-# check autocollision and display
-    check_tiago_autocollision(robot, q)
+# # check autocollision and display
+#     check_tiago_autocollision(robot, q)
 
     # q = []  # testing with random configurations
 ##############
@@ -200,16 +206,16 @@ def main():
     print("reduced parameters: ", params_e)
 
     print("%d base parameters: " % len(params_base), params_base)
-    text_file = join(
-        dirname(dirname(str(abspath(__file__)))),
-        f"data/tiago_full_calib_BP.txt")
-    with open(text_file, 'w') as out:
-        for n in params_base:
-            out.write(n + '\n')
+    # text_file = join(
+    #     dirname(dirname(str(abspath(__file__)))),
+    #     f"data/tiago_full_calib_BP.txt")
+    # with open(text_file, 'w') as out:
+    #     for n in params_base:
+    #         out.write(n + '\n')
 
 # display few configurations
     # viz = MeshcatVisualizer(
-    #     model=robot.model, collision_model=robot.collision_model, visual_model=robot.visual_model, url='classical'
+    #     model=robot.model, collision_model=robot.coplision_model, visual_model=robot.visual_model, url='classical'
     # )
     # time.sleep(3)
     # for i in range(20):

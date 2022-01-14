@@ -1216,11 +1216,11 @@
       <inertia ixx="0.00" ixy="0.00" ixz="0.00" iyy="0.00" iyz="0.00" izz="0.00"/>
     </inertial>
   </link>
-  <joint name="ee_marker_joint" type="revolute">
+  <joint name="ee_marker_joint" type="fixed">
     <parent link="arm_7_link"/>
     <child link="ee_marker"/>
     <origin rpy="0.0 0.0 0.0" xyz="0.1 0.1 0.1"/>
-    <axis xyz="1 0 0"/>
+    <axis xyz="0 1 0"/>
     <limit effort="6.6" lower="-2.09439510239" upper="2.09439510239" velocity="1.76"/>
   </joint>
 
