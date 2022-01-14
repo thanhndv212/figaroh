@@ -66,6 +66,8 @@ def display(robot, model,  q):
 
 # create values storing dictionary 'param'
 
+# TODO: define in config file, parse from there
+
 
 def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,  calib_model='full_params', calib_idx=3):
     tool_FrameId = robot.model.getFrameId(TOOL_NAME)
@@ -91,6 +93,8 @@ def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,  calib_
     }
     return param
 
+# TODO: to add to a class
+
 
 def get_jointOffset(joint_names):
     """ This function give a dictionary of joint offset parameters.
@@ -105,6 +109,8 @@ def get_jointOffset(joint_names):
     phi_jo = [0] * len(joint_off)  # default zero values
     joint_off = dict(zip(joint_off, phi_jo))
     return joint_off
+
+# TODO: to add to a class
 
 
 def get_geoOffset(joint_names):
@@ -124,6 +130,8 @@ def get_geoOffset(joint_names):
     geo_params = dict(zip(geo_params, phi_gp))
     return geo_params
 
+# TODO: to add to tools
+
 
 def add_eemarker_frame(frame_name, p, rpy, model, data):
     """ Adds a frame at the end_effector.
@@ -137,6 +145,8 @@ def add_eemarker_frame(frame_name, p, rpy, model, data):
     ee_frame_id = model.addFrame(
         pin.Frame(frame_name, parent_jointId, prev_frameId, frame_placement, pin.FrameType(0), pin.Inertia.Zero()), False)
     return ee_frame_id
+
+# TODO: to add to a data class (extracting, inspecting, plotting)
 
 
 def extract_expData(path_to_file, param):
@@ -201,6 +211,7 @@ def extract_expData4Mkr(path_to_file, param):
         q_exp[i, 8:] = param['q0'][8:]
     return PEEm_exp, q_exp
 
+# TODO: to add to tools
 
 def cartesian_to_SE3(X):
     ''' Convert (6,) cartesian coordinates to SE3
@@ -212,6 +223,8 @@ def cartesian_to_SE3(X):
     rot_matrix = pin.rpy.rpyToMatrix(X[3:6])
     placement = pin.SE3(rot_matrix, translation)
     return placement
+
+# TODO: to crete a linear regression class (parent), LM  as a child class
 
 ######################## LM least squares functions ########################################
 

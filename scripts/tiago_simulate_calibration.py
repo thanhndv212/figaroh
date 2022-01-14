@@ -66,7 +66,7 @@ print(params_name)
 #############################################################
 
 # 3/ Data collection/generation
-dataSet = 'experimental'  # choose data source 'sample' or 'experimental'
+dataSet = 'sample'  # choose data source 'sample' or 'experimental'
 if dataSet == 'sample':
     # create artificial offsets
     var_sample, nvars_sample = init_var(param, mode=1)
