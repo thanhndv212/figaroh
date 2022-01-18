@@ -44,20 +44,20 @@ from meshcat_viewer_wrapper import MeshcatVisualizer
 
 # 1/ Load robot model and call a dictionary containing reserved constants
 robot = Robot(
-    # "talos_data/robots",
-    # "talos_reduced.urdf"
-    "tiago_description/robots",
-    "tiago_no_hand_mod.urdf",
+    "talos_data/robots",
+    "talos_reduced.urdf"
+    # "tiago_description/robots",
+    # "tiago_no_hand_mod.urdf",
     # isFext=True  # add free-flyer joint at base
 )
 model = robot.model
 data = robot.data
 print(model)
 NbSample = 50
-# param = get_param(
-#     robot, NbSample, TOOL_NAME='gripper_left_joint', NbMarkers=1)
 param = get_param(
-    robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1)
+    robot, NbSample, TOOL_NAME='gripper_left_joint', NbMarkers=1)
+# param = get_param(
+# robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1)
 
 # 2/ Base parameters calculation
 q_rand = []
@@ -109,9 +109,9 @@ print("%d base parameters: " % len(params_base), params_base)
 # print("condition number: ", cond_num(R_b), cond_num(Rrand_b))
 # print(params_base)
 
-# text_file = join(
-#     dirname(dirname(str(abspath(__file__)))),
-#     f"data/talos_full_calib_BP.txt")
-# with open(text_file, 'w') as out:
-#     for n in params_base:
-#         out.write(n + '\n')
+text_file = join(
+    dirname(dirname(str(abspath(__file__)))),
+    f"data/test_full_calib_BP.txt")
+with open(text_file, 'w') as out:
+    for n in params_base:
+        out.write(n + '\n')

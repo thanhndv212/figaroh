@@ -213,6 +213,7 @@ def extract_expData4Mkr(path_to_file, param):
 
 # TODO: to add to tools
 
+
 def cartesian_to_SE3(X):
     ''' Convert (6,) cartesian coordinates to SE3
         input: 1D (6,) numpy array
@@ -255,19 +256,35 @@ def init_var(param, mode=0, base_model=True):
             offset_0 = np.random.uniform(-0.01, 0.01, (param['NbJoint']*6,))
         # markers variables
         qEE_0 = np.full((param['NbMarkers']*param['calibration_index'],), 0)
-
-    # create list of parameters to be set as zero for Tiago, respect the order
-    # TODO: to be imported from a config file
-    torso_list = [0, 1, 2, 3, 4, 5]
-    arm1_list = [6, 7, 8, 11]
-    arm2_list = [13, 16]
-    arm3_list = [19, 22]
-    arm4_list = [24, 27]
-    arm5_list = [30, 33]
-    arm6_list = [36, 39]
-    arm7_list = [43, 46]  # include phiz7
-    total_list = [torso_list, arm1_list, arm2_list, arm3_list, arm4_list,
-                  arm5_list, arm6_list, arm7_list]
+    robot_name = "Tiago"
+    robot_name = "Talos"
+    if robot_name == "Tiago":
+        # create list of parameters to be set as zero for Tiago, respect the order
+        # TODO: to be imported from a config file
+        torso_list = [0, 1, 2, 3, 4, 5]
+        arm1_list = [6, 7, 8, 11]
+        arm2_list = [13, 16]
+        arm3_list = [19, 22]
+        arm4_list = [24, 27]
+        arm5_list = [30, 33]
+        arm6_list = [36, 39]
+        arm7_list = [43, 46]  # include phiz7
+        total_list = [torso_list, arm1_list, arm2_list, arm3_list, arm4_list,
+                      arm5_list, arm6_list, arm7_list]
+    elif robot_name == "Talos":
+        # create list of parameters to be set as zero for Tiago, respect the order
+        # TODO: to be imported from a config file
+        torso1_list = [2, 3, 4, 5]
+        torso2_list = [1, 4]
+        arm1_list = [2, 5]
+        arm2_list = [0, 3]
+        arm3_list = [2, 5]
+        arm4_list = [1, 4]
+        arm5_list = [2, 5]
+        arm6_list = [0, 4]
+        arm7_list = [1, 4]  # include phiz7
+        total_list = [torso1_list, arm1_list, arm2_list, arm3_list, arm4_list,
+                      arm5_list, arm6_list, arm7_list]
 
     zero_list = []
     for i in range(param['NbJoint']):
@@ -286,10 +303,10 @@ def init_var(param, mode=0, base_model=True):
 
 def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True):
     """ Calculates corresponding cordinates of end_effector, given a set of joint configurations
-        var: consist of full 6 params for each joint (6+6xNbJoints+6xNbMarkers,) since scipy.optimize 
+        var: consist of full 6 params for each joint (6+6xNbJoints+6xNbMarkers,) since scipy.optimize
         only takes 1D array variables.
         Reshape to ((1 + NbJoints + NbMarkers, 6))
-        Use jointplacement to add offset to 6 axes of joint       
+        Use jointplacement to add offset to 6 axes of joint
 
     """
     PEE = []
@@ -307,7 +324,7 @@ def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True):
         var_rs = np.zeros((NbFrames, 6))
 
         # 6D base frame
-        var_rs[0, 0:6] = var[0:6]
+        var_rs[0, 0: 6] = var[0: 6]
 
         if param['NbJoint'] > 0:
             # torso
@@ -398,28 +415,28 @@ def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True):
         # markers
 
     # # frame trasformation matrix from mocap to base
-    base_placement = cartesian_to_SE3(var_rs[0, 0:6])
+    base_placement = cartesian_to_SE3(var_rs[0, 0: 6])
 
     for k in range(param['NbMarkers']):
         markerId = 1 + param['NbJoint'] + k
         curr_varId = var.shape[0] - \
             param['NbMarkers']*param['calibration_index']
-        var_rs[markerId, 0:param['calibration_index']] = var[(
-            curr_varId+k*param['calibration_index']):(curr_varId+(k+1)*param['calibration_index'])]
+        var_rs[markerId, 0: param['calibration_index']] = var[(
+            curr_varId+k*param['calibration_index']): (curr_varId+(k+1)*param['calibration_index'])]
 
         PEE_marker = np.empty((nrow, ncol))
         for i in range(ncol):
             config = q_temp[i, :]
             '''
             some fckps here in exceptional case wherer no parameters of the joint are to be variables
-            even the joint is active 
+            even the joint is active
             '''
             # update 8 joints
             for j in range(param['NbJoint']):
                 joint_placement = cartesian_to_SE3(var_rs[j+1, :])
                 # model.jointPlacements[j].translation += joint_placement.translation
                 # model.jointPlacements[j].rotation += joint_placement.rotation (matrix addition => possibly wrong)
-                model.jointPlacements[j].translation += var_rs[j+1, 0:3]
+                model.jointPlacements[j].translation += var_rs[j+1, 0: 3]
                 new_rpy = pin.rpy.matrixToRpy(
                     model.jointPlacements[j].rotation) + var_rs[j+1, 3:6]
                 model.jointPlacements[j].rotation = pin.rpy.rpyToMatrix(
@@ -547,14 +564,14 @@ def Calculate_kinematics_model(q_i, model, data, IDX_TOOL):
     """ Calculate jacobian matrix and kinematic regressor given ONE configuration.
     """
     # print(mp.current_process())
-    #pin.updateGlobalPlacements(model , data)
+    # pin.updateGlobalPlacements(model , data)
     pin.forwardKinematics(model, data, q_i)
     pin.updateFramePlacements(model, data)
 
     J = pin.computeFrameJacobian(
         model, data, q_i, IDX_TOOL, pin.LOCAL)
     R = pin.computeFrameKinematicRegressor(
-        model, data, IDX_TOOL, pin.LOCAL)
+        model, data, IDX_TOOL, pin.WORLD)
     return model, data, R, J
 
 
@@ -732,7 +749,7 @@ class OCP_determination_problem(object):
             # PEEe = np.append(PEEe, np.array(
             #    self.data.oMf[self.param['IDX_TOOL']].translation))
 
-        #PEEd_all = self.param['PEEd']
+        # PEEd_all = self.param['PEEd']
         # PEEd = PEEd_all[[self.param['iter']-1, self.param['NbSample'] +
         #                self.param['iter']-1, 2*self.param['NbSample']+self.param['iter']-1]]
 
@@ -828,7 +845,7 @@ class OCP_determination_problem(object):
         # Returns the Jacobian of the constraints with respect to x
         #
         # self.const_ind=0
-        #J0 = approx_fprime(x, self.constraints, self.param['eps_gradient'])
+        # J0 = approx_fprime(x, self.constraints, self.param['eps_gradient'])
 
         return np.concatenate([
             approx_fprime(x, self.constraint_0, self.param['eps_gradient']),
