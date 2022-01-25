@@ -97,10 +97,10 @@ def main():
                 PEEd_2d[:, idx] = np.array([PEEd_x[i], PEEd_y[j], PEEd_z[k]])
 
 # 2.1/ visualize cartesian poses
-    fig = plt.figure(figsize=(10, 7))
-    ax = plt.axes(projection="3d")
-    ax.scatter3D(PEEd_2d[0, :], PEEd_2d[1, :], PEEd_2d[2, :], color="green")
-    plt.title("simple 3D scatter plot")
+    # fig = plt.figure(figsize=(10, 7))
+    # ax = plt.axes(projection="3d")
+    # ax.scatter3D(PEEd_2d[0, :], PEEd_2d[1, :], PEEd_2d[2, :], color="green")
+    # plt.title("simple 3D scatter plot")
     # plt.show()
 
 # 3/ Solve ipopt IK problem to generate joint configuration from given poses
@@ -203,15 +203,15 @@ def main():
     # condition number
     print("condition number: ", cond_num(R_b), cond_num(Rrand_b))
 
-    print("reduced parameters: ", params_e)
+    # print("reduced parameters: ", params_e)
 
     print("%d base parameters: " % len(params_base), params_base)
-    # text_file = join(
-    #     dirname(dirname(str(abspath(__file__)))),
-    #     f"data/tiago_full_calib_BP.txt")
-    # with open(text_file, 'w') as out:
-    #     for n in params_base:
-    #         out.write(n + '\n')
+    text_file = join(
+        dirname(dirname(str(abspath(__file__)))),
+        f"data/tiago/tiago_full_calib_BP.txt")
+    with open(text_file, 'w') as out:
+        for n in params_base:
+            out.write(n + '\n')
 
 # display few configurations
     # viz = MeshcatVisualizer(

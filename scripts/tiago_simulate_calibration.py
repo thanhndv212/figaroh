@@ -101,40 +101,40 @@ print('updated number of samples: ', param['NbSample'])
 
 #############################################################
 
-# 3'/ Data inspecting (for experimental data)
-PEEm_xyz = PEEm_LM.reshape((param['NbMarkers']*3, param["NbSample"]))
-print(PEEm_xyz.shape)
+# # 3'/ Data inspecting (for experimental data)
+# PEEm_xyz = PEEm_LM.reshape((param['NbMarkers']*3, param["NbSample"]))
+# print(PEEm_xyz.shape)
 
-# absolute distance from mocap to markers
-PEEm_dist = np.zeros((param['NbMarkers'], param["NbSample"]))
-for i in range(param["NbMarkers"]):
-    for j in range(param["NbSample"]):
-        PEEm_dist[i, j] = np.sqrt(
-            PEEm_xyz[i*3, j]**2 + PEEm_xyz[i*3 + 1, j]**2 + PEEm_xyz[i*3 + 2, j]**2)
+# # absolute distance from mocap to markers
+# PEEm_dist = np.zeros((param['NbMarkers'], param["NbSample"]))
+# for i in range(param["NbMarkers"]):
+#     for j in range(param["NbSample"]):
+#         PEEm_dist[i, j] = np.sqrt(
+#             PEEm_xyz[i*3, j]**2 + PEEm_xyz[i*3 + 1, j]**2 + PEEm_xyz[i*3 + 2, j]**2)
 
-    # distance between two markers
-err_PEE = np.zeros((2, param['NbSample']))
-for j in range(param['NbSample']):
-    dx_bot = PEEm_xyz[0, j]-PEEm_xyz[3, j]
-    dy_bot = PEEm_xyz[1, j]-PEEm_xyz[4, j]
-    dz_bot = PEEm_xyz[2, j]-PEEm_xyz[5, j]
-    err_PEE[0, j] = np.sqrt(dx_bot**2 + dy_bot**2 + dz_bot**2)
-    dx_top = PEEm_xyz[6, j]-PEEm_xyz[9, j]
-    dy_top = PEEm_xyz[7, j]-PEEm_xyz[10, j]
-    dz_top = PEEm_xyz[8, j]-PEEm_xyz[11, j]
-    err_PEE[1, j] = np.sqrt(dx_top**2 + dy_top**2 + dz_top**2)
+#     # distance between two markers
+# err_PEE = np.zeros((2, param['NbSample']))
+# for j in range(param['NbSample']):
+#     dx_bot = PEEm_xyz[0, j]-PEEm_xyz[3, j]
+#     dy_bot = PEEm_xyz[1, j]-PEEm_xyz[4, j]
+#     dz_bot = PEEm_xyz[2, j]-PEEm_xyz[5, j]
+#     err_PEE[0, j] = np.sqrt(dx_bot**2 + dy_bot**2 + dz_bot**2)
+#     dx_top = PEEm_xyz[6, j]-PEEm_xyz[9, j]
+#     dy_top = PEEm_xyz[7, j]-PEEm_xyz[10, j]
+#     dz_top = PEEm_xyz[8, j]-PEEm_xyz[11, j]
+#     err_PEE[1, j] = np.sqrt(dx_top**2 + dy_top**2 + dz_top**2)
 
-    # plot distance between two markers
-dist_fig, dist_axs = plt.subplots(2)
-dist_fig.suptitle("Relative distances between markers (m) ")
-dist_axs[0].plot(err_PEE[0, :], label="error between 2 bottom markers")
-dist_axs[1].plot(err_PEE[1, :], label="error between 2 top markers")
-dist_axs[0].legend()
-dist_axs[1].legend()
-dist_axs[0].axhline(np.mean(err_PEE[0, :]), 0,
-                    param['NbSample'] - 1, color='r', linestyle='--')
-dist_axs[1].axhline(np.mean(err_PEE[1, :]), 0,
-                    param['NbSample'] - 1, color='r', linestyle='--')
+#     # plot distance between two markers
+# dist_fig, dist_axs = plt.subplots(2)
+# dist_fig.suptitle("Relative distances between markers (m) ")
+# dist_axs[0].plot(err_PEE[0, :], label="error between 2 bottom markers")
+# dist_axs[1].plot(err_PEE[1, :], label="error between 2 top markers")
+# dist_axs[0].legend()
+# dist_axs[1].legend()
+# dist_axs[0].axhline(np.mean(err_PEE[0, :]), 0,
+#                     param['NbSample'] - 1, color='r', linestyle='--')
+# dist_axs[1].axhline(np.mean(err_PEE[1, :]), 0,
+#                     param['NbSample'] - 1, color='r', linestyle='--')
 
 #############################################################
 
@@ -190,63 +190,63 @@ for i in range(param["NbMarkers"]):
         PEEe_dist[i, j] = np.sqrt(
             PEEe_xyz[i*3, j]**2 + PEEe_xyz[i*3 + 1, j]**2 + PEEe_xyz[i*3 + 2, j]**2)
 
-# calculate standard deviation of estimated parameter ( Khalil chapter 11)
-sigma_ro_sq = (LM_solve.cost**2) / \
-    (param['NbSample']*param['calibration_index'] - nvars)
-J = LM_solve.jac
-C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
-std_dev = []
-std_pctg = []
-for i in range(nvars):
-    std_dev.append(np.sqrt(C_param[i, i]))
-    std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
-path_save_ep = join(
-    dirname(dirname(str(abspath(__file__)))),
-    f"data/estimation_result.csv")
-with open(path_save_ep, "w") as output_file:
-    w = csv.writer(output_file)
-    for i in range(nvars):
-        w.writerow(
-            [
-                params_name[i],
-                LM_solve.x[i],
-                std_dev[i],
-                std_pctg[i]
-            ]
-        )
-print("standard deviation: ", std_dev)
+# # calculate standard deviation of estimated parameter ( Khalil chapter 11)
+# sigma_ro_sq = (LM_solve.cost**2) / \
+#     (param['NbSample']*param['calibration_index'] - nvars)
+# J = LM_solve.jac
+# C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
+# std_dev = []
+# std_pctg = []
+# for i in range(nvars):
+#     std_dev.append(np.sqrt(C_param[i, i]))
+#     std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
+# path_save_ep = join(
+#     dirname(dirname(str(abspath(__file__)))),
+#     f"data/estimation_result.csv")
+# with open(path_save_ep, "w") as output_file:
+#     w = csv.writer(output_file)
+#     for i in range(nvars):
+#         w.writerow(
+#             [
+#                 params_name[i],
+#                 LM_solve.x[i],
+#                 std_dev[i],
+#                 std_pctg[i]
+#             ]
+#         )
+# print("standard deviation: ", std_dev)
 
 #############################################################
 
 # Plot results
 
-# Errors between estimated position and measured position of markers
-est_fig, est_axs = plt.subplots(4)
-est_fig.suptitle(
-    "Relative errors between estimated markers and measured markers in position (m) ")
-est_axs[0].bar(np.arange(param['NbSample']), PEEe_dist[0, :] -
-               PEEm_dist[0, :], label='bottom left')
-est_axs[1].bar(np.arange(param['NbSample']), PEEe_dist[1, :] -
-               PEEm_dist[1, :], label='bottom right')
-est_axs[2].bar(np.arange(param['NbSample']), PEEe_dist[2, :] -
-               PEEm_dist[2, :], label='top left')
-est_axs[3].bar(np.arange(param['NbSample']), PEEe_dist[3, :] -
-               PEEm_dist[3, :], label='bottom right')
-est_axs[0].legend()
-est_axs[1].legend()
-est_axs[2].legend()
-est_axs[3].legend()
+# # Errors between estimated position and measured position of markers
+# est_fig, est_axs = plt.subplots(4)
+# est_fig.suptitle(
+#     "Relative errors between estimated markers and measured markers in position (m) ")
+# est_axs[0].bar(np.arange(param['NbSample']), PEEe_dist[0, :] -
+#                PEEm_dist[0, :], label='bottom left')
+# est_axs[1].bar(np.arange(param['NbSample']), PEEe_dist[1, :] -
+#                PEEm_dist[1, :], label='bottom right')
+# est_axs[2].bar(np.arange(param['NbSample']), PEEe_dist[2, :] -
+#                PEEm_dist[2, :], label='top left')
+# est_axs[3].bar(np.arange(param['NbSample']), PEEe_dist[3, :] -
+#                PEEm_dist[3, :], label='bottom right')
+# est_axs[0].legend()
+# est_axs[1].legend()
+# est_axs[2].legend()
+# est_axs[3].legend()
 
-# Estimated values of parameters
-plt.figure(figsize=(7.5, 6))
-if dataSet == 'sample':
-    plt.barh(params_name, (LM_solve.x - var_sample), align='center')
-elif dataSet == 'experimental':
-    plt.barh(params_name[0:6], LM_solve.x[0:6], align='center')
-    plt.barh(params_name[6:-3*param['NbMarkers']],
-             LM_solve.x[6:-3*param['NbMarkers']], align='center')
-    plt.barh(params_name[-3*param['NbMarkers']:],
-             LM_solve.x[-3*param['NbMarkers']:], align='center')
+# # Estimated values of parameters
+# plt.figure(figsize=(7.5, 6))
+# if dataSet == 'sample':
+#     plt.barh(params_name, (LM_solve.x - var_sample), align='center')
+# elif dataSet == 'experimental':
+#     plt.barh(params_name[0:6], LM_solve.x[0:6], align='center')
+#     plt.barh(params_name[6:-3*param['NbMarkers']],
+#              LM_solve.x[6:-3*param['NbMarkers']], align='center')
+#     plt.barh(params_name[-3*param['NbMarkers']:],
+#              LM_solve.x[-3*param['NbMarkers']:], align='center')
 
 
 # plt.figure(2)
@@ -266,94 +266,94 @@ elif dataSet == 'experimental':
 #     'Comparison of end effector positions by measurement of MoCap and estimation of calibrated model')
 
 
-# update estimated parameters to xacro file
+# # update estimated parameters to xacro file
 
-torso_list = [0, 1, 2, 3, 4, 5]
-arm1_list = [6, 7, 8, 11]
-arm2_list = [13, 16]
-arm3_list = [19, 22]
-arm4_list = [24, 27]
-arm5_list = [30, 33]
-arm6_list = [36, 39]
-arm7_list = [43, 46]  # include phiz7
-total_list = [torso_list, arm1_list, arm2_list, arm3_list, arm4_list, arm5_list,
-              arm6_list, arm7_list]
+# torso_list = [0, 1, 2, 3, 4, 5]
+# arm1_list = [6, 7, 8, 11]
+# arm2_list = [13, 16]
+# arm3_list = [19, 22]
+# arm4_list = [24, 27]
+# arm5_list = [30, 33]
+# arm6_list = [36, 39]
+# arm7_list = [43, 46]  # include phiz7
+# total_list = [torso_list, arm1_list, arm2_list, arm3_list, arm4_list, arm5_list,
+#               arm6_list, arm7_list]
 
-zero_list = []
-for i in range(len(total_list)):
-    zero_list = [*zero_list, *total_list[i]]
+# zero_list = []
+# for i in range(len(total_list)):
+#     zero_list = [*zero_list, *total_list[i]]
 
-param_list = np.zeros((param['NbJoint'], 6))
+# param_list = np.zeros((param['NbJoint'], 6))
 
-# torso all zeros
+# # torso all zeros
 
-# arm 1
-param_list[1, 3] = LM_solve.x[6]
-param_list[1, 4] = LM_solve.x[7]
+# # arm 1
+# param_list[1, 3] = LM_solve.x[6]
+# param_list[1, 4] = LM_solve.x[7]
 
-# arm 2
-param_list[2, 0] = LM_solve.x[8]
-param_list[2, 2] = LM_solve.x[9]
-param_list[2, 3] = LM_solve.x[10]
-param_list[2, 5] = LM_solve.x[11]
+# # arm 2
+# param_list[2, 0] = LM_solve.x[8]
+# param_list[2, 2] = LM_solve.x[9]
+# param_list[2, 3] = LM_solve.x[10]
+# param_list[2, 5] = LM_solve.x[11]
 
-# arm 3
-param_list[3, 0] = LM_solve.x[12]
-param_list[3, 2] = LM_solve.x[13]
-param_list[3, 3] = LM_solve.x[14]
-param_list[3, 5] = LM_solve.x[15]
+# # arm 3
+# param_list[3, 0] = LM_solve.x[12]
+# param_list[3, 2] = LM_solve.x[13]
+# param_list[3, 3] = LM_solve.x[14]
+# param_list[3, 5] = LM_solve.x[15]
 
-# arm 4
-param_list[4, 1] = LM_solve.x[16]
-param_list[4, 2] = LM_solve.x[17]
-param_list[4, 4] = LM_solve.x[18]
-param_list[4, 5] = LM_solve.x[19]
+# # arm 4
+# param_list[4, 1] = LM_solve.x[16]
+# param_list[4, 2] = LM_solve.x[17]
+# param_list[4, 4] = LM_solve.x[18]
+# param_list[4, 5] = LM_solve.x[19]
 
-# arm 5
-param_list[5, 1] = LM_solve.x[20]
-param_list[5, 2] = LM_solve.x[21]
-param_list[5, 4] = LM_solve.x[22]
-param_list[5, 5] = LM_solve.x[23]
+# # arm 5
+# param_list[5, 1] = LM_solve.x[20]
+# param_list[5, 2] = LM_solve.x[21]
+# param_list[5, 4] = LM_solve.x[22]
+# param_list[5, 5] = LM_solve.x[23]
 
-# arm 6
-param_list[6, 1] = LM_solve.x[24]
-param_list[6, 2] = LM_solve.x[25]
-param_list[6, 4] = LM_solve.x[26]
-param_list[6, 5] = LM_solve.x[27]
+# # arm 6
+# param_list[6, 1] = LM_solve.x[24]
+# param_list[6, 2] = LM_solve.x[25]
+# param_list[6, 4] = LM_solve.x[26]
+# param_list[6, 5] = LM_solve.x[27]
 
-# arm 7
-param_list[7, 0] = LM_solve.x[28]
-param_list[7, 2] = LM_solve.x[29]
-param_list[7, 3] = LM_solve.x[30]
-param_list[7, 5] = LM_solve.x[31]
+# # arm 7
+# param_list[7, 0] = LM_solve.x[28]
+# param_list[7, 2] = LM_solve.x[29]
+# param_list[7, 3] = LM_solve.x[30]
+# param_list[7, 5] = LM_solve.x[31]
 
-joint_names = [name for i, name in enumerate(model.names)]
-offset_name = ['_x_offset', '_y_offset', '_z_offset', '_roll_offset',
-               '_pitch_offset', '_yaw_offset']
-path_save_xacro = join(
-    dirname(dirname(str(abspath(__file__)))),
-    f"data/offset.xacro")
-with open(path_save_xacro, "w") as output_file:
-    for i in range(param['NbJoint']):
-        for j in range(6):
-            update_name = joint_names[i+1] + offset_name[j]
-            update_value = param_list[i, j]
-            update_line = "<xacro:property name=\"{}\" value=\"{}\" / >".format(
-                update_name, update_value)
-            output_file.write(update_line)
-            output_file.write('\n')
-path_save_yaml = join(
-    dirname(dirname(str(abspath(__file__)))),
-    f"data/offset.yaml")
-with open(path_save_yaml, "w") as output_file:
-    for i in range(param['NbJoint']):
-        for j in range(6):
-            update_name = joint_names[i+1] + offset_name[j]
-            update_value = param_list[i, j]
-            update_line = "{}: {}".format(
-                update_name, update_value)
-            output_file.write(update_line)
-            output_file.write('\n')
+# joint_names = [name for i, name in enumerate(model.names)]
+# offset_name = ['_x_offset', '_y_offset', '_z_offset', '_roll_offset',
+#                '_pitch_offset', '_yaw_offset']
+# path_save_xacro = join(
+#     dirname(dirname(str(abspath(__file__)))),
+#     f"data/offset.xacro")
+# with open(path_save_xacro, "w") as output_file:
+#     for i in range(param['NbJoint']):
+#         for j in range(6):
+#             update_name = joint_names[i+1] + offset_name[j]
+#             update_value = param_list[i, j]
+#             update_line = "<xacro:property name=\"{}\" value=\"{}\" / >".format(
+#                 update_name, update_value)
+#             output_file.write(update_line)
+#             output_file.write('\n')
+# path_save_yaml = join(
+#     dirname(dirname(str(abspath(__file__)))),
+#     f"data/offset.yaml")
+# with open(path_save_yaml, "w") as output_file:
+#     for i in range(param['NbJoint']):
+#         for j in range(6):
+#             update_name = joint_names[i+1] + offset_name[j]
+#             update_value = param_list[i, j]
+#             update_line = "{}: {}".format(
+#                 update_name, update_value)
+#             output_file.write(update_line)
+#             output_file.write('\n')
 #############################################################
 
 # # LINEARIZED model with iterative least square ###############
