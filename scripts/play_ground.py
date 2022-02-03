@@ -3,10 +3,10 @@ from datetime import datetime
 from numpy.core.fromnumeric import shape
 import pinocchio as pin
 from pinocchio.robot_wrapper import RobotWrapper
-from pinocchio.visualize import GepettoVisualizer, MeshcatVisualizer
+# from pinocchio.visualize import GepettoVisualizer, MeshcatVisualizer
 from pinocchio.utils import *
 # from pinocchio.pinocchio_pywrap import rpy
-
+from meshcat_viewer_wrapper import MeshcatVisualizer
 from sys import argv
 import os
 from os.path import dirname, join, abspath
@@ -25,6 +25,8 @@ import time
 from tools.robot import Robot
 from tools.regressor import eliminate_non_dynaffect
 from tools.qrdecomposition import get_baseParams, cond_num
+
+from tiago_simplified import (check_tiago_autocollision)
 
 from tiago_mocap_calib_fun_def import (
     # get_param,
@@ -85,7 +87,7 @@ def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,  calib_
     return param
 
 
-NbGrid = 6
+NbGrid = 3
 NbSample = pow(NbGrid, 3)
 
 param = get_param(
@@ -94,9 +96,9 @@ print(param)
 IDX_TOOL = param['IDX_TOOL']
 # 2/ Generate cartesian poses
 
-cube_pose = [0.3, 0.3, 0.3]  # position of the cube
+cube_pose = [0.55, 0.0, 0.2]  # position of the cube
 cube_pose[len(cube_pose):] = [0, 0, 0, 1]  # orientation of the cube
-cube_dim = [0.4, 0.6, 0.6]
+cube_dim = [0.6, 0.6, 0.6]
 
 PEEd_x = np.linspace(cube_pose[0] - cube_dim[0]/2,
                      cube_pose[0] + cube_dim[0]/2, NbGrid)
@@ -201,7 +203,7 @@ for iter in range(NbSample):
 # 2/ Base parameters calculation
 # q = []
 q = np.reshape(q, (NbSample, model.nq), order='C')
-
+q[:, 23] = np.full(NbSample, -1.5)
 # print(q)
 
 Rrand_b, R_b, params_base, params_e = Calculate_base_kinematics_regressor(
@@ -215,12 +217,46 @@ print(pow(np.prod(s2), 1/38), s2)
 
 print("%d base parameters: " % len(params_base), params_base)
 
-text_file = join(
-    dirname(dirname(str(abspath(__file__)))),
-    f"data/talos/talos_full_calib_BP.txt")
-with open(text_file, 'w') as out:
-    for n in params_base:
-        out.write(n + '\n')
+
+print("You have to start 'meshcat-server' in a terminal ...")
+time.sleep(3)
+
+# Tiago no hand
+# urdf_dr = "tiago_description/robots"
+# urdf_file = "tiago_no_hand_mod.urdf"
+# srdf_dr = "/tiago_description/srdf/"
+# srdf_file = "tiago.srdf"
+
+# Talos reduced
+urdf_dr = "talos_data/robots"
+urdf_file = "talos_reduced.urdf"
+srdf_dr = "/talos_data/srdf/"
+srdf_file = "talos.srdf"
+
+# robot = Robot(urdf_dr, urdf_file)
+
+# q = np.empty((20, robot.q0.shape[0]))
+# for i in range(20):
+#     q[i, :] = pin.randomConfiguration(robot.model)
+check_tiago_autocollision(robot, q, srdf_dr, srdf_file)
+
+# display few configurations
+viz = MeshcatVisualizer(
+    model=robot.model, collision_model=robot.collision_model,
+    visual_model=robot.visual_model, url='classical'
+)
+time.sleep(3)
+for i in range(NbSample):
+    viz.display(q[i, :])
+    time.sleep(1)
+
+
+# text_file = join(
+#     dirname(dirname(str(abspath(__file__)))),
+#     f"data/talos/talos_full_calib_BP.txt")
+# with open(text_file, 'w') as out:
+#     for n in params_base:
+#         out.write(n + '\n')
 
 # save designed configs to txt file
 # dt = datetime.now()
