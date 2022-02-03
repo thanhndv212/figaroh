@@ -127,12 +127,13 @@ def build_tiago_simplified(robot):
           len(geom_model.collisionPairs))
 
 
-def build_tiago_normal(robot):
+def build_tiago_normal(robot, srdf_dr, srdf_file):
     # # Remove collision pairs listed in the SRDF file
     pinocchio_model_dir = join(dirname(str(abspath(__file__))), "models")
     model_path = join(pinocchio_model_dir, "others/robots")
-    srdf_filename = "tiago.srdf"
-    srdf_model_path = model_path + "/tiago_description/srdf/" + srdf_filename
+    srdf_filename = srdf_file  # "tiago.srdf"
+    srdf_model_path = model_path + srdf_dr + \
+        srdf_filename  # "/tiago_description/srdf/"
 
     geom_model = robot.geom_model
     geom_model.addAllCollisionPairs()
@@ -144,9 +145,9 @@ def build_tiago_normal(robot):
     geom_data = pin.GeometryData(geom_model)
 
 
-def check_tiago_autocollision(robot, q):
+def check_tiago_autocollision(robot, q, srdf_dr, srdf_file):
     # build_tiago_simplified(robot)
-    build_tiago_normal(robot)
+    build_tiago_normal(robot, srdf_dr, srdf_file)
     collision = CollisionWrapper(robot, viz=None)
     for i in range(q.shape[0]):
         is_collision = collision.computeCollisions(q[i, :])
@@ -160,18 +161,29 @@ def main():
     print("You have to start 'meshcat-server' in a terminal ...")
     time.sleep(3)
 
-    robot = Robot("tiago_description/robots", "tiago_no_hand_mod.urdf")
-    # build_tiago_simplified(robot)
-    # build_tiago_normal(robot)
-    # check autocollision
+    # Tiago no hand
+    # urdf_dr = "tiago_description/robots"
+    # urdf_file = "tiago_no_hand_mod.urdf"
+    # srdf_dr = "/tiago_description/srdf/"
+    # srdf_file = "tiago.srdf"
+
+    # Talos reduced
+    urdf_dr = "talos_data/robots"
+    urdf_file = "talos_reduced.urdf"
+    srdf_dr = "/talos_data/srdf/"
+    srdf_file = "talos.srdf"
+
+    robot = Robot(urdf_dr, urdf_file)
+
     q = np.empty((20, robot.q0.shape[0]))
     for i in range(20):
         q[i, :] = pin.randomConfiguration(robot.model)
-    check_tiago_autocollision(robot, q)
+    check_tiago_autocollision(robot, q, srdf_dr, srdf_file)
 
     # display few configurations
     viz = MeshcatVisualizer(
-        model=robot.model, collision_model=robot.collision_model, visual_model=robot.visual_model, url='classical'
+        model=robot.model, collision_model=robot.collision_model,
+        visual_model=robot.visual_model, url='classical'
     )
     time.sleep(3)
     for i in range(20):
