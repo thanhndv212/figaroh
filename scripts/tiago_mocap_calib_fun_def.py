@@ -237,7 +237,7 @@ def init_var(param, mode=0, base_model=True, robot_name='Tiago'):
     # create artificial offsets
     if mode == 0:
         # 6D base frame
-        qBase_0 = np.array([0.1, 0.1, 0.1, 0., 0., 0.])
+        qBase_0 = np.array([0.0, 0., 0., 0., 0., 0.])
         # parameter variation at joints
         if param['calib_model'] == 'joint_ offset':
             offset_0 = np.zeros(param['NbJoint'])
@@ -605,7 +605,7 @@ def Calculate_kinematics_model(q_i, model, data, IDX_TOOL):
     J = pin.computeFrameJacobian(
         model, data, q_i, IDX_TOOL, pin.LOCAL)
     R = pin.computeFrameKinematicRegressor(
-        model, data, IDX_TOOL, pin.LOCAL)
+        model, data, IDX_TOOL, pin.WORLD)
     return model, data, R, J
 
 

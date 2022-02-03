@@ -191,30 +191,30 @@ for i in range(param["NbMarkers"]):
             PEEe_xyz[i*3, j]**2 + PEEe_xyz[i*3 + 1, j]**2 + PEEe_xyz[i*3 + 2, j]**2)
 
 # # calculate standard deviation of estimated parameter ( Khalil chapter 11)
-# sigma_ro_sq = (LM_solve.cost**2) / \
-#     (param['NbSample']*param['calibration_index'] - nvars)
-# J = LM_solve.jac
-# C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
-# std_dev = []
-# std_pctg = []
-# for i in range(nvars):
-#     std_dev.append(np.sqrt(C_param[i, i]))
-#     std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
-# path_save_ep = join(
-#     dirname(dirname(str(abspath(__file__)))),
-#     f"data/estimation_result.csv")
-# with open(path_save_ep, "w") as output_file:
-#     w = csv.writer(output_file)
-#     for i in range(nvars):
-#         w.writerow(
-#             [
-#                 params_name[i],
-#                 LM_solve.x[i],
-#                 std_dev[i],
-#                 std_pctg[i]
-#             ]
-#         )
-# print("standard deviation: ", std_dev)
+sigma_ro_sq = (LM_solve.cost**2) / \
+    (param['NbSample']*param['calibration_index'] - nvars)
+J = LM_solve.jac
+C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
+std_dev = []
+std_pctg = []
+for i in range(nvars):
+    std_dev.append(np.sqrt(C_param[i, i]))
+    std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
+path_save_ep = join(
+    dirname(dirname(str(abspath(__file__)))),
+    f"data/estimation_result.csv")
+with open(path_save_ep, "w") as output_file:
+    w = csv.writer(output_file)
+    for i in range(nvars):
+        w.writerow(
+            [
+                params_name[i],
+                LM_solve.x[i],
+                std_dev[i],
+                std_pctg[i]
+            ]
+        )
+print("standard deviation: ", std_dev)
 
 #############################################################
 
