@@ -174,17 +174,17 @@ def main():
         for j in range(NbSample):
             t_list.append(i + j*period)
     t_list.sort()
+
     # extract mocap data
     path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/tf.csv'
     frame_names = ['"waist_frame"', '"left_hand_frame"']
-
     talos_dict = extract_tfbag(path_to_csv, frame_names)
+
+    # TODO: project end effector onto waist frame, pick up data samples at exact t_list
 
     # extract joint configurations data
     path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/introspection_datavalues.csv'
-
     path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/introspection_datanames.csv'
-
     extract_joint_pos(path_to_values, path_to_names, t_list)
 
     # TODO:  write to csv file
