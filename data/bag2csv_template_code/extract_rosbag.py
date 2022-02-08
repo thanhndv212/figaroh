@@ -24,6 +24,7 @@ def extract_tfbag(path_to_csv, frame_names):
         output: traslation x, y, z
                 rotation roll, pitch, yaw
     """
+    tf_dict = {}
 
     # create data frame
     df = pd.read_csv(path_to_csv)
@@ -49,15 +50,15 @@ def extract_tfbag(path_to_csv, frame_names):
     sec_val = df.loc[:, sec_col].values
     nsec_val = df.loc[:, nsec_col].values
 
-    # data arrange
-    # return a dict contain key/item = frame_name(str)/numpy array
-    tf_dict = {}
+    # t_val (list): extract and covert rostime to second
     t_val = []
     starting_t = rospy.rostime.Time(sec_val[0], nsec_val[0]).to_sec()
 
     for i in range(len(sec_val)):
         t_val.append(rospy.rostime.Time(
             sec_val[i], nsec_val[i]).to_sec() - starting_t)
+
+    # tf_dict (dict): return a dict contain key/item = frame_name(str)/numpy array
 
     for frame_name in frame_names:
         t = []
@@ -74,41 +75,121 @@ def extract_tfbag(path_to_csv, frame_names):
     return tf_dict
 
 
-def extract_joint_pos(path_to_values, path_to_names):
+def extract_joint_pos(path_to_values, path_to_names, t_list=[5, 10, 15, 20]):
     """ Extracts joint angles
     """
+    joint_dict = {}
     # read names and values from csv to dataframe
     dt_names = pd.read_csv(path_to_names)
     dt_values = pd.read_csv(path_to_values)
 
-    # first_name = '- arm_1_joint_position'
-    # last_name = '- /gravity_compensation_local_control_actual_effort_torso_lift_joint'
+    # time
+    sec_col = "secs"
+    nsec_col = "nsecs"
 
-    # first_name_idx = dt_names.columns.get_loc(first_name)
-    # last_name_idx = dt_names.columns.get_loc(last_name)
+    # t_val (list): extract and convert rostime to second
+    sec_val = dt_values.loc[:, sec_col].values
+    nsec_val = dt_values.loc[:, nsec_col].values
+    t_val = []
+    starting_t = rospy.rostime.Time(sec_val[0], nsec_val[0]).to_sec()
 
-    # names = dt_names.columns[range(first_name_idx, last_name_idx+1)]
-    # for name in names:
-    #     d.update({name: []})
+    for i in range(len(sec_val)):
+        t_val.append(rospy.rostime.Time(
+            sec_val[i], nsec_val[i]).to_sec() - starting_t)
+    # t_idx (list): get list of instants where data samples are picked up
+    t_idx = []
+    eps = 0.001
+    for t in t_list:
+        t_min = min(t_val, key=lambda x: abs(x-t))
+        if abs(t-t_min) < eps:
+            t_idx.append(t_val.index(t_min))
 
-    dt_names_cols = list(dt_names.columns)
-    print(len(dt_names_cols))
+    # joint names
+
+    torso_1 = '- torso_1_joint_position'
+    torso_2 = '- torso_2_joint_position'
+    arm_left_1 = '- arm_left_1_joint_position'
+    arm_left_2 = '- arm_left_2_joint_position'
+    arm_left_3 = '- arm_left_3_joint_position'
+    arm_left_4 = '- arm_left_4_joint_position'
+    arm_left_5 = '- arm_left_5_joint_position'
+    arm_left_6 = '- arm_left_6_joint_position'
+    arm_left_7 = '- arm_left_7_joint_position'
+
+    joint_names = [torso_1, torso_2, arm_left_1, arm_left_2,
+                   arm_left_3, arm_left_4, arm_left_5, arm_left_6, arm_left_7]
+
+    # names (list): slice names in datanames corressponding to "values" column in datavalues
+    names = []
+    if dt_names.columns[-1] == "names_version":
+        last_col = "names_version"
+        if dt_names.columns[7] == "names":
+            first_col = "names"
+            first_idx = dt_names.columns.get_loc(first_col)
+            last_idx = dt_names.columns.get_loc(last_col)
+            names = list(dt_names.columns[range(first_idx+1, last_idx)])
+
+    # joint_idx (list): get indices of corresponding to active joints
+    joint_idx = []
+    for element in joint_names:
+        if element in names:
+            joint_idx.append(names.index(element))
+        else:
+            print("Mentioned joint is not present in the names list.")
+            print(element)
+            break
+
+    # split data in "values" column (str) to numpy array
     dt_values_val = dt_values.loc[:, 'values'].values
-    print(type(dt_values_val[1]), dt_values_val.shape)
 
-    msg = dt_values_val[1]
-    first_row = msg.replace('[', '')
+    test_msg = dt_values_val[1]
+    first_row = test_msg.replace('[', '')
     first_row = first_row.replace(']', '')
     split_data = first_row.split(',')
-    print(type(split_data))
-    print(len(split_data))
+    print(np.asarray([split_data], dtype=np.float64).shape)
+    if len(split_data) == len(names):
+        # joint_val = np.empty((0, len(names)), dtype=np.float64)
+        joint_val = []
+        for i in t_idx:
+            # each msg is A STRING, it needs to be splitted and group into a list of float
+            msg = dt_values_val[i]
+            first_row = msg.replace('[', '')
+            first_row = first_row.replace(']', '')
+            split_data = first_row.split(',')
+            # curr_spl = np.asarray([split_data], dtype=np.float64)
+            # joint_val = np.vstack((joint_val, curr_spl))
+            joint_val.append(split_data)
+
+        joint_val = np.asarray(joint_val, dtype=np.float64)
+        print(joint_val.shape)
 
 
 def main():
-    # path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/tf.csv'
-    # frame_names = ['"waist_frame"', '"left_hand_frame"']
+    # list of instants where data samples are picked up
+    t0 = [20., 37.5, 54.]
+    period = 50.
+    NbSample = 9
+    t_list = []
+    for i in t0:
+        for j in range(NbSample):
+            t_list.append(i + j*period)
+    t_list.sort()
+    # extract mocap data
+    path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/tf.csv'
+    frame_names = ['"waist_frame"', '"left_hand_frame"']
 
-    # talos_dict = extract_tfbag(path_to_csv, frame_names)
+    talos_dict = extract_tfbag(path_to_csv, frame_names)
+
+    # extract joint configurations data
+    path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/introspection_datavalues.csv'
+
+    path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/introspection_datanames.csv'
+
+    extract_joint_pos(path_to_values, path_to_names, t_list)
+
+    # TODO:  write to csv file
+
+    # plot
     # LH_pos = talos_dict[frame_names[0]]
     # W_pos = talos_dict[frame_names[1]]
 
@@ -125,54 +206,6 @@ def main():
     # ax[3].plot(LH_pos[0, :], LH_pos[3, :])
     # # ax[2].plot(W_pos[2, :])
 
-    # plt.show()
-    path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/introspection_datavalues.csv'
-
-    path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/introspection_datanames.csv'
-
-    extract_joint_pos(path_to_values, path_to_names)
-
 
 if __name__ == '__main__':
     main()
-
-    # values = pd.read_csv(
-    #     '/home/thanhndv212/Cooking/bag2csv/calibration/introspection_datavalues.csv')
-    # names = pd.read_csv(
-    #     '/home/thanhndv212/Cooking/bag2csv/calibration/introspection_datanames.csv')
-
-    # d = {}
-
-    # # time
-    # read_secs = values.loc[:, 'secs'].values
-    # read_nsecs = values.loc[:, 'nsecs'].values
-
-    # t = []
-    # starting_time = rospy.rostime.Time(read_secs[0], read_nsecs[0]).to_sec()
-    # for i in range(len(read_secs)):
-    #     t.append(rospy.rostime.Time(
-    #         read_secs[i], read_nsecs[i]).to_sec()-starting_time)
-    # d.update({'t': t})
-    # # joint names
-    # first_name = '- arm_1_joint_position'
-    # last_name = '- /gravity_compensation_local_control_actual_effort_torso_lift_joint'
-
-    # first_name_idx = names.columns.get_loc(first_name)
-    # last_name_idx = names.columns.get_loc(last_name)
-
-    # names = names.columns[range(first_name_idx, last_name_idx+1)]
-    # for name in names:
-    #     d.update({name: []})
-
-    # # joint values
-    # read_values = values.loc[:, 'values'].values
-
-    # for msg in read_values:
-    #     first_row = msg.replace('[', '')
-    #     first_row = first_row.replace(']', '')
-    #     split_data = first_row.split(',')
-    #     if len(split_data) - 4 == len(names):  # ignore first 4 columns
-    #         for i in range(4, len(split_data)):
-    #             d[names[i-4]].append(float(split_data[i]))
-
-    # df_tiago = pd.DataFrame(data=d)
