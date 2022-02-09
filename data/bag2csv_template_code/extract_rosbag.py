@@ -5,6 +5,10 @@ import numpy as np
 import rospy
 import dask.dataframe as dd
 
+from sys import argv
+import os
+from os.path import dirname, join, abspath
+
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -139,7 +143,7 @@ def extract_joint_pos(path_to_values, path_to_names, t_list=[5, 10, 15, 20]):
             print(element)
             break
 
-    # split data in "values" column (str) to numpy array
+    # joint_val (np.darray): split data in "values" column (str) to numpy array
     dt_values_val = dt_values.loc[:, 'values'].values
 
     test_msg = dt_values_val[1]
@@ -147,6 +151,7 @@ def extract_joint_pos(path_to_values, path_to_names, t_list=[5, 10, 15, 20]):
     first_row = first_row.replace(']', '')
     split_data = first_row.split(',')
     print(np.asarray([split_data], dtype=np.float64).shape)
+
     if len(split_data) == len(names):
         # joint_val = np.empty((0, len(names)), dtype=np.float64)
         joint_val = []
@@ -161,20 +166,34 @@ def extract_joint_pos(path_to_values, path_to_names, t_list=[5, 10, 15, 20]):
             joint_val.append(split_data)
 
         joint_val = np.asarray(joint_val, dtype=np.float64)
-        print(joint_val.shape)
+
+    # extract only active joint angle values from joint_val
+    actJoint_val = np.empty((len(t_idx), len(joint_idx)))
+    for i in range(len(joint_idx)):
+        actJoint_val[:, i] = joint_val[:, joint_idx[i]]
+    print(actJoint_val.shape)
+    return actJoint_val
 
 
 def main():
     # list of instants where data samples are picked up
-    t0 = [20., 37.5, 54.]
-    period = 50.
-    NbSample = 9
-    t_list = []
-    for i in t0:
-        for j in range(NbSample):
-            t_list.append(i + j*period)
+    # NOTE: cycle is not periodic!!!
+    # t0 = [20., 37.5, 54.]
+    # period = 49
+    # NbSample = 9
+    # t_list = []
+    # for i in t0:
+    #     for j in range(NbSample):
+    #         t_list.append(i + j*period)
+    t_list = [20., 37.5, 54.,
+              70.35, 88., 105.7,
+              121.5, 139.2, 155.55,
+              174.74, 189.5, 207.2,
+              224.95, 242.65, 258.46,
+              276.164, 291.95, 308.71,
+              327.37, 342.69, 360.]
     t_list.sort()
-
+    print(t_list)
     # extract mocap data
     path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/tf.csv'
     frame_names = ['"waist_frame"', '"left_hand_frame"']
@@ -182,29 +201,67 @@ def main():
 
     # TODO: project end effector onto waist frame, pick up data samples at exact t_list
 
-    # extract joint configurations data
+    # # extract joint configurations data
     path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/introspection_datavalues.csv'
     path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/introspection_datanames.csv'
-    extract_joint_pos(path_to_values, path_to_names, t_list)
+    actJoint_val = extract_joint_pos(path_to_values, path_to_names, t_list)
 
-    # TODO:  write to csv file
+    W_pos = talos_dict[frame_names[0]]
+    LH_pos = talos_dict[frame_names[1]]
+
+    # waist frame
+    Wt_idx = []
+    eps = 0.01
+    for t in t_list:
+        Wt_min = min(list(W_pos[0, :]), key=lambda x: abs(x-t))
+        if abs(t-Wt_min) < eps:
+            curr_idx = list(W_pos[0, :]).index(Wt_min)
+            Wt_idx.append(curr_idx)
+
+    W_sample = np.empty((len(Wt_idx), W_pos.shape[0]))
+    for i in range(len(Wt_idx)):
+        W_sample[i, :] = W_pos[:, Wt_idx[i]]
+
+    # left hand frame
+    LHt_idx = []
+    eps = 0.01
+
+    for t in t_list:
+        LHt_min = min(LH_pos[0, :], key=lambda x: abs(x-t))
+        if abs(t-LHt_min) < eps:
+            curr_idx = list(LH_pos[0, :]).index(LHt_min)
+            LHt_idx.append(curr_idx)
+
+    LH_sample = np.empty((len(LHt_idx), LH_pos.shape[0]))
+    for i in range(len(LHt_idx)):
+        LH_sample[i, :] = LH_pos[:, LHt_idx[i]]
+
+    # project left hand frame onto waist frame
+    LH_W_sample = np.empty_like(LH_sample)
+    LH_W_sample[:, 0] = LH_sample[:, 0]
+    LH_W_sample[:, 1] = LH_sample[:, 1] - W_sample[:, 1]
+    LH_W_sample[:, 2] = LH_sample[:, 2] - W_sample[:, 2]
+    LH_W_sample[:, 3] = LH_sample[:, 3] - W_sample[:, 3]
 
     # plot
-    # LH_pos = talos_dict[frame_names[0]]
-    # W_pos = talos_dict[frame_names[1]]
 
     # fig = plt.figure()
-    # ax = fig.subplots(4, 1)
-    # ax[0].plot(W_pos[0, :], W_pos[3, :])
+    # ax = fig.subplots(1, 1)
 
-    # ax[1].plot(LH_pos[0, :], LH_pos[1, :])
-    # # ax[0].plot(W_pos[0, :])
+    # ax.plot(LH_pos[3, :])
+    # ax.scatter(LHt_idx, LH_sample[:, 3])
+    # plt.show()
 
-    # ax[2].plot(LH_pos[0, :], LH_pos[2, :])
-    # # ax[1].plot(W_pos[1, :])
-
-    # ax[3].plot(LH_pos[0, :], LH_pos[3, :])
-    # # ax[2].plot(W_pos[2, :])
+    # TODO:  write to csv file
+    # write in order of (t,x,y,z,q_torso1, q_torso2, ..., q_arm7)
+    path_save_ep = join(
+        dirname(dirname(str(abspath(__file__)))),
+        f"talos/talos_feb_arm_2_contact.csv")
+    with open(path_save_ep, "w") as output_file:
+        w = csv.writer(output_file)
+        for i in range(len(t_list)):
+            row = list(np.append(LH_W_sample[i, :], actJoint_val[i, :]))
+            w.writerow(row)
 
 
 if __name__ == '__main__':
