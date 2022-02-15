@@ -181,34 +181,103 @@ def extract_expData(path_to_file, param):
     return PEEm_exp, q_exp
 
 
-def extract_expData4Mkr(path_to_file, param):
-    # list of "bad" data samples
+def extract_expData4Mkr(path_to_file, param, del_list=[]):
+    """ Read a csv file into dataframe by pandas, then transform to the form
+    of full joint configuration and markers' position/location.
+    NOTE: indices matter! Pay attention.
+        Input:  path_to_file: str, path to csv
+                param: Param, a class contain neccesary constant info.
+        Output: np.ndarray, joint configs
+                1D np.ndarray, markers' position/location 
+        Csv headers: 
+                i-th marker position: xi, yi, zi
+                i-th marker orientation: phixi, phiyi, phizi (not used atm)
+                active joint angles: 
+                    Tiago: torso, arm1, arm2, arm3, arm4, arm5, arm6, arm7
+                    Talos: torso1, torso2, armL1, armL2, armL3, armL4, armL5, armL6, armL7
+    """
+    # list of "bad" data samples of Tiago exp data
     # del_list = [4, 8, -3, -1] # calib_data_oct
     # del_list = [2, 26, 39]  # calib_nov_64
-    del_list = [1, 2, 4, 5, 10, 13, 19, 22,
-                23, 24, 28, 33, -3, -2]  # clean Nov 30
+    # del_list = [1, 2, 4, 5, 10, 13, 19, 22,
+    #             23, 24, 28, 33, -3, -2]  # clean Nov 30
     # del_list = [13, 28]  # no clean Nov 30
 
-    # first 12 cols: xyz positions of 4 markers
-    xyz_4Mkr = np.delete(pd.read_csv(
-        path_to_file, usecols=list(range(0, param['NbMarkers']*3))).to_numpy(), del_list, axis=0)
-    print('csv read', xyz_4Mkr.shape)
+    # list of "bad" data samples of Talos exp data
+    del_list = [0, 46, 58]
+    # # first 12 cols: xyz positions of 4 markers
+    # xyz_4Mkr = np.delete(pd.read_csv(
+    #     path_to_file, usecols=list(range(0, param['NbMarkers']*3))).to_numpy(), del_list, axis=0)
+    # print('csv read', xyz_4Mkr.shape)
 
-    # next 8 cols: joints position
-    q_act = np.delete(pd.read_csv(path_to_file, usecols=list(
-        range(12, 20))).to_numpy(), del_list, axis=0)
+    # # extract measured end effector coordinates
+    # PEEm_exp = xyz_4Mkr.T
+    # PEEm_exp = PEEm_exp.flatten('C')
+
+    # # next 8 cols: joints position
+    # q_act = np.delete(pd.read_csv(path_to_file, usecols=list(
+    #     range(12, 20))).to_numpy(), del_list, axis=0)
+    # param['NbSample'] = q_act.shape[0]
+
+    # # extract measured joint configs
+    # q_exp = np.empty((param['NbSample'], param['q0'].shape[0]))
+    # for i in range(param['NbSample']):
+    #     q_exp[i, 0:8] = q_act[i, :]
+    #     # ATTENTION: need to check robot.q0 vs TIAGo.q0
+    #     q_exp[i, 8:] = param['q0'][8:]
+
+    # new fixes:
+    # read_csv
+    df = pd.read_csv(path_to_file)
+
+    # create headers for marker position
+    PEE_headers = []
+    if param['calibration_index'] == 3:
+        for i in range(param['NbMarkers']):
+            PEE_headers.append('x%s' % str(i+1))
+            PEE_headers.append('y%s' % str(i+1))
+            PEE_headers.append('z%s' % str(i+1))
+
+    joint_headers = []
+    # create headers for joint configurations
+    if param['robot_name'] == "Tiago":
+        joint_headers = ['torso', 'arm1', 'arm2', 'arm3', 'arm4',
+                         'arm5', 'arm6', 'arm7']
+    elif param['robot_name'] == "Talos":
+        joint_headers = ['torso1', 'torso2', 'armL1', 'armL2', 'armL3',
+                         'armL4', 'armL5', 'armL6', 'armL7']
+    # check if all created headers present in csv file
+    csv_headers = list(df.columns)
+
+    for header in (PEE_headers + joint_headers):
+        if header not in csv_headers:
+            print("Headers for extracting data is wrongly defined!")
+            break
+
+    # Extract marker position/location
+    xyz_4Mkr = df[PEE_headers].to_numpy()
+
+    # Extract joint configurations
+    q_act = df[joint_headers].to_numpy()
+
+    # remove bad data
+    if del_list:
+        xyz_4Mkr = np.delete(xyz_4Mkr, del_list, axis=0)
+        q_act = np.delete(q_act, del_list, axis=0)
+    # update number of data points
     param['NbSample'] = q_act.shape[0]
 
-    # extract measured end effector coordinates
     PEEm_exp = xyz_4Mkr.T
     PEEm_exp = PEEm_exp.flatten('C')
 
-    # extract measured joint configs
     q_exp = np.empty((param['NbSample'], param['q0'].shape[0]))
-    for i in range(param['NbSample']):
-        q_exp[i, 0:8] = q_act[i, :]
-        # ATTENTION: need to check robot.q0 vs TIAGo.q0
-        q_exp[i, 8:] = param['q0'][8:]
+    if param['robot_name'] == 'Tiago':
+        pass
+    elif param['robot_name'] == 'Talos':
+        for i in range(param['NbSample']):
+            config = param['q0']
+            config[param['Ind_joint']] = q_act[i, :]
+            q_exp[i, :] = config
     return PEEm_exp, q_exp
 
 # TODO: to add to tools
@@ -230,7 +299,7 @@ def cartesian_to_SE3(X):
 ######################## LM least squares functions ########################################
 
 
-def init_var(param, mode=0, base_model=True, robot_name='Tiago'):
+def init_var(param, mode=0, base_model=True):
     ''' Creates variable vector, mode = 0: initial guess, mode = 1: predefined values(randomized)
     '''
     # x,y,z,r,p,y from mocap to base ( 6 parameters for pos and orient)
@@ -248,7 +317,7 @@ def init_var(param, mode=0, base_model=True, robot_name='Tiago'):
 
     elif mode == 1:
         # 6D base frame
-        qBase_0 = np.array([0.5, 0.0, 0.3, 0., 0., 0.])
+        qBase_0 = np.array([0.0, 0.0, 0.0, 0., 0., 0.])
         # parameter variation at joints
         if param['calib_model'] == 'joint_ offset':
             offset_0 = np.random.uniform(-0.1, 0.1, (param['NbJoint'],))
@@ -258,7 +327,7 @@ def init_var(param, mode=0, base_model=True, robot_name='Tiago'):
         qEE_0 = np.full((param['NbMarkers']*param['calibration_index'],), 0)
     # robot_name = "Tiago"
     # robot_name = "Talos"
-    if robot_name == "Tiago":
+    if param['robot_name'] == 'Tiago':
         # create list of parameters to be set as zero for Tiago, respect the order
         # TODO: to be imported from a config file
         torso_list = [0, 1, 2, 3, 4, 5]
@@ -271,7 +340,7 @@ def init_var(param, mode=0, base_model=True, robot_name='Tiago'):
         arm7_list = [43, 46]  # include phiz7
         total_list = [torso_list, arm1_list, arm2_list, arm3_list, arm4_list,
                       arm5_list, arm6_list, arm7_list]
-    elif robot_name == "Talos":
+    elif param['robot_name'] == 'Talos':
         # create list of parameters to be set as zero for Tiago, respect the order
         # TODO: to be imported from a config file
         torso1_list = [0, 1, 2, 3, 4, 5]
@@ -300,7 +369,7 @@ def init_var(param, mode=0, base_model=True, robot_name='Tiago'):
     return var, nvars
 
 
-def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True, robot_name="Tiago"):
+def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True):
     """ Calculates corresponding cordinates of end_effector, given a set of joint configurations
         var: an 1D array containing estimated offset parameters since scipy.optimize
         only takes 1D array variables. Reshape to ((1 + NbJoints + NbMarkers, 6)), replacing zeros 
@@ -318,7 +387,7 @@ def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True, ro
     # reshape variable vector to vectors of 6
     NbFrames = 1 + param['NbJoint'] + param['NbMarkers']
 
-    if robot_name == "Tiago":
+    if param['robot_name'] == 'Tiago':
         if not base_model:
             var_rs = np.reshape(var, (NbFrames, 6))
         elif base_model:
@@ -373,68 +442,68 @@ def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True, ro
                                             var_rs[8, 5] = var[31]
             # 32 base parameters for tiago, first 6 assigned to base frame
 
-        elif robot_name == "Talos":
-            if not base_model:
-                var_rs = np.reshape(var, (NbFrames, 6))
-            elif base_model:
-                var_rs = np.zeros((NbFrames, 6))
+    elif param['robot_name'] == 'Talos':
+        if not base_model:
+            var_rs = np.reshape(var, (NbFrames, 6))
+        elif base_model:
+            var_rs = np.zeros((NbFrames, 6))
 
-                # 6D base frame
-                var_rs[0, 0: 6] = var[0: 6]
+            # 6D base frame
+            var_rs[0, 0: 6] = var[0: 6]
 
-                # offset parameters var_rs[1:(1+Nbjoint),:]
-                if param['NbJoint'] > 0:
-                    # torso_1
-                    var_rs[1, :] = np.zeros(6)
-                    if param['NbJoint'] > 1:
-                        #  torso_2
-                        var_rs[2, 0] = var[6]
-                        var_rs[2, 1] = var[7]
-                        var_rs[2, 3] = var[8]
-                        var_rs[2, 4] = var[9]
-                        if param['NbJoint'] > 2:
-                            # arm1
-                            var_rs[3, 0] = var[10]
-                            var_rs[3, 2] = var[11]
-                            var_rs[3, 3] = var[12]
-                            var_rs[3, 5] = var[13]
-                            if param['NbJoint'] > 3:
-                                # arm2
-                                var_rs[4, 0] = var[14]
-                                var_rs[4, 1] = var[15]
-                                var_rs[4, 3] = var[16]
-                                var_rs[4, 4] = var[17]
-                                if param['NbJoint'] > 4:
-                                    # arm3
-                                    var_rs[5, 1] = var[18]
-                                    var_rs[5, 2] = var[19]
-                                    var_rs[5, 4] = var[20]
-                                    var_rs[5, 5] = var[21]
-                                    if param['NbJoint'] > 5:
-                                        # arm4
-                                        var_rs[6, 0] = var[22]
-                                        var_rs[6, 1] = var[23]
-                                        var_rs[6, 3] = var[24]
-                                        var_rs[6, 4] = var[25]
-                                        if param['NbJoint'] > 6:
-                                            # arm5
-                                            var_rs[7, 0] = var[26]
-                                            var_rs[7, 2] = var[27]
-                                            var_rs[7, 3] = var[28]
-                                            var_rs[7, 5] = var[29]
-                                            if param['NbJoint'] > 7:
+            # offset parameters var_rs[1:(1+Nbjoint),:]
+            if param['NbJoint'] > 0:
+                # torso_1
+                var_rs[1, :] = np.zeros(6)
+                if param['NbJoint'] > 1:
+                    #  torso_2
+                    var_rs[2, 0] = var[6]
+                    var_rs[2, 1] = var[7]
+                    var_rs[2, 3] = var[8]
+                    var_rs[2, 4] = var[9]
+                    if param['NbJoint'] > 2:
+                        # arm1
+                        var_rs[3, 0] = var[10]
+                        var_rs[3, 2] = var[11]
+                        var_rs[3, 3] = var[12]
+                        var_rs[3, 5] = var[13]
+                        if param['NbJoint'] > 3:
+                            # arm2
+                            var_rs[4, 0] = var[14]
+                            var_rs[4, 1] = var[15]
+                            var_rs[4, 3] = var[16]
+                            var_rs[4, 4] = var[17]
+                            if param['NbJoint'] > 4:
+                                # arm3
+                                var_rs[5, 1] = var[18]
+                                var_rs[5, 2] = var[19]
+                                var_rs[5, 4] = var[20]
+                                var_rs[5, 5] = var[21]
+                                if param['NbJoint'] > 5:
+                                    # arm4
+                                    var_rs[6, 0] = var[22]
+                                    var_rs[6, 1] = var[23]
+                                    var_rs[6, 3] = var[24]
+                                    var_rs[6, 4] = var[25]
+                                    if param['NbJoint'] > 6:
+                                        # arm5
+                                        var_rs[7, 0] = var[26]
+                                        var_rs[7, 2] = var[27]
+                                        var_rs[7, 3] = var[28]
+                                        var_rs[7, 5] = var[29]
+                                        if param['NbJoint'] > 7:
+                                            # arm6
+                                            var_rs[8, 0] = var[30]
+                                            var_rs[8, 1] = var[31]
+                                            var_rs[8, 3] = var[32]
+                                            var_rs[8, 4] = var[33]
+                                            if param['NbJoint'] > 8:
                                                 # arm6
-                                                var_rs[8, 0] = var[30]
-                                                var_rs[8, 1] = var[31]
-                                                var_rs[8, 3] = var[32]
-                                                var_rs[8, 4] = var[33]
-                                                if param['NbJoint'] > 8:
-                                                    # arm6
-                                                    var_rs[8, 1] = var[34]
-                                                    var_rs[8, 2] = var[35]
-                                                    var_rs[8, 4] = var[36]
-                                                    var_rs[8, 5] = var[37]
-                # 38 base parameters for talos torso-arm, first 6 assigned to base frame
+                                                var_rs[8, 1] = var[34]
+                                                var_rs[8, 2] = var[35]
+                                                var_rs[8, 4] = var[36]
+                                                var_rs[8, 5] = var[37]
+            # 38 base parameters for talos torso-arm, first 6 assigned to base frame
 
     # frame trasformation matrix from mocap to base
     base_placement = cartesian_to_SE3(var_rs[0, 0: 6])
@@ -478,7 +547,7 @@ def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True, ro
             pin.updateFramePlacements(model, data)
 
             # calculate oMf from the 1st join tto last joint (wrist)
-            lastJoint_name = model.names[param['NbJoint']]
+            lastJoint_name = model.names[param['tool_joint']]
             lastJoint_frameId = model.getFrameId(lastJoint_name)
             inter_placements = data.oMf[lastJoint_frameId]
 
@@ -605,7 +674,7 @@ def Calculate_kinematics_model(q_i, model, data, IDX_TOOL):
     J = pin.computeFrameJacobian(
         model, data, q_i, IDX_TOOL, pin.LOCAL)
     R = pin.computeFrameKinematicRegressor(
-        model, data, IDX_TOOL, pin.WORLD)
+        model, data, IDX_TOOL, pin.LOCAL)
     return model, data, R, J
 
 

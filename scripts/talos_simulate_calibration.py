@@ -1,6 +1,7 @@
 import pinocchio as pin
 from pinocchio.robot_wrapper import RobotWrapper
 from pinocchio.utils import *
+from meshcat_viewer_wrapper import MeshcatVisualizer
 
 from sys import argv
 import os
@@ -25,7 +26,6 @@ from tools.qrdecomposition import get_baseParams, cond_num
 from tiago_mocap_calib_fun_def import (
     extract_expData,
     extract_expData4Mkr,
-    get_param,
     init_var,
     get_PEE_fullvar,
     get_PEE_var,
@@ -49,25 +49,33 @@ model = robot.model
 data = robot.data
 
 
-def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,  calib_model='full_params', calib_idx=3):
-    tool_FrameId = robot.model.getFrameId(TOOL_NAME)
-    parentJoint2Tool_Id = robot.model.frames[tool_FrameId].parent
-    # NbJoint = parentJoint2Tool_Id  # joint #0 is  universe
-    root_joint = 13
-    NbJoint = parentJoint2Tool_Id - root_joint + 1
+def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,
+              calib_model='full_params', calib_idx=3):
+    robot_name = 'Talos'
+    q0 = robot.q0
+    IDX_TOOL = robot.model.getFrameId(TOOL_NAME)
+    tool_joint = model.frames[IDX_TOOL].parent
+    # joint 0 is universe, trivial
+    actJoint_idx = model.supports[tool_joint].tolist()[1:]
+    Ind_joint = [model.joints[i].idx_q for i in actJoint_idx]
+    NbJoint = len(actJoint_idx)
+    x_opt_prev = np.zeros([NbJoint])
+
     print("number of active joint: ", NbJoint)
     print("tool name: ", TOOL_NAME)
     print("parent joint of tool frame: ",
-          robot.model.names[parentJoint2Tool_Id])
+          robot.model.names[tool_joint])
     print("number of markers: ", NbMarkers)
     print("calibration model: ", calib_model)
     param = {
-        'q0': np.array(robot.q0),
-        'x_opt_prev': np.zeros([NbJoint]),
+        'robot_name': robot_name,
+        'q0': q0,
+        'x_opt_prev': x_opt_prev,
         'NbSample': NbSample,
-        'IDX_TOOL': tool_FrameId,
+        'IDX_TOOL': IDX_TOOL,
+        'tool_joint': tool_joint,
         'eps': 1e-3,
-        'Ind_joint': np.array(range(root_joint-1, parentJoint2Tool_Id)),
+        'Ind_joint': Ind_joint,
         'PLOT': 0,
         'NbMarkers': NbMarkers,
         'calib_model': calib_model,  # 'joint_offset' / 'full_params'
@@ -80,6 +88,7 @@ def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,  calib_
 NbSample = 50
 param = get_param(
     robot, NbSample, TOOL_NAME='gripper_left_base_link', NbMarkers=1)
+print(param)
 
 #############################################################
 
@@ -102,7 +111,7 @@ print(params_name)
 dataSet = 'sample'  # choose data source 'sample' or 'experimental'
 if dataSet == 'sample':
     # create artificial offsets
-    var_sample, nvars_sample = init_var(param, mode=1, robot_name="Talos")
+    var_sample, nvars_sample = init_var(param, mode=0)
     print("%d var_sample: " % nvars_sample, var_sample)
 
     # create sample configurations
@@ -113,25 +122,25 @@ if dataSet == 'sample':
         config[param['Ind_joint']] = pin.randomConfiguration(model)[
             param['Ind_joint']]
         q_sample[i, :] = config
-
     # create simulated end effector coordinates measures (PEEm)
     PEEm_sample = get_PEE_fullvar(
-        var_sample, q_sample, model, data, param, noise=False)
+        var_sample, q_sample, model, data, param)
 
     q_LM = np.copy(q_sample)
     PEEm_LM = np.copy(PEEm_sample)
 
 elif dataSet == 'experimental':
-    # read csv fileT
-    path = '/home/thanhndv212/Cooking/figaroh/data/exp_data_nov_64_3011.csv'
+    # read csv file output joint configs and marker positions (tiago/talos)
+    path = '/home/thanhndv212/Cooking/figaroh/data/talos/talos_feb_arm_02_10_contact.csv'
     PEEm_exp, q_exp = extract_expData4Mkr(path, param)
 
     q_LM = np.copy(q_exp)
     PEEm_LM = np.copy(PEEm_exp)
 
-for k in range(param['NbJoint']+1):
+for k in param['Ind_joint']:
+    k = int(k)
     print('to check if model modified',
-          model.names[k], ": ", model.jointPlacements[k].translation)
+          model.names[k+1], ": ", model.jointPlacements[k].translation)
 
 print('updated number of samples: ', param['NbSample'])
 
@@ -189,23 +198,22 @@ print('updated number of samples: ', param['NbSample'])
 coeff = 1e-3
 
 
-def cost_func(var, coeff, q, model, data, param, robot_name, PEEm):
-    PEEe = get_PEE_fullvar(var, q, model, data, param, robot_name)
-    res_vect = np.append((PEEm - PEEe), np.sqrt(coeff)
-                         * var[6:-param['NbMarkers']*3])
-    # res_vect = (PEEm - PEEe)
+def cost_func(var, coeff, q, model, data, param, PEEm):
+    PEEe = get_PEE_fullvar(var, q, model, data, param)
+    # res_vect = np.append((PEEm - PEEe), np.sqrt(coeff)
+    #                      * var[6:-param['NbMarkers']*3])
+    res_vect = (PEEm - PEEe)
     return res_vect
 
 
 # initial guess
 # mode = 1: random seed[-0.01, 0.01], mode = 0: init guess = 0
-robot_name = "Talos"
-var_0, nvars = init_var(param, mode=1, robot_name="Talos")
+var_0, nvars = init_var(param, mode=1)
 print("initial guess: ", var_0)
 
 # solve
 LM_solve = least_squares(cost_func, var_0,  method='lm', verbose=1,
-                         args=(coeff, q_LM, model, data, param, robot_name, PEEm_LM))
+                         args=(coeff, q_LM, model, data, param,  PEEm_LM))
 
 #############################################################
 
@@ -213,7 +221,7 @@ LM_solve = least_squares(cost_func, var_0,  method='lm', verbose=1,
 
 # PEE estimated by solution
 PEEe_sol = get_PEE_fullvar(LM_solve.x, q_LM, model,
-                           data, param, robot_name)
+                           data, param)
 
 # root mean square error
 rmse = np.sqrt(np.mean((PEEe_sol-PEEm_LM)**2))
@@ -259,11 +267,53 @@ print("optimality: ", LM_solve.optimality)
 #############################################################
 
 # Plot results
+# # 1/ Errors between estimated position and measured position of markers
 
-# # Errors between estimated position and measured position of markers
-# est_fig, est_axs = plt.subplots(4)
-# est_fig.suptitle(
-#     "Relative errors between estimated markers and measured markers in position (m) ")
+""" PEEm_LM: 1D array (x,y,z) of measured positions of markers
+    PEEe_sol: 1D array (x,y,z) of estimated positions of markers from optimal solution
+"""
+delta_PEE = PEEe_sol - PEEm_LM
+PEE_xyz = delta_PEE.reshape((param['NbMarkers']*3, param["NbSample"]))
+PEE_dist = np.zeros((param['NbMarkers'], param["NbSample"]))
+for i in range(param["NbMarkers"]):
+    for j in range(param["NbSample"]):
+        PEE_dist[i, j] = np.sqrt(
+            PEE_xyz[i*3, j]**2 + PEE_xyz[i*3 + 1, j]**2 + PEE_xyz[i*3 + 2, j]**2)
+
+est_fig, est_axs = plt.subplots(param['NbMarkers'], 1)
+est_fig.suptitle(
+    "Relative errors between estimated markers and measured markers in position (m) ")
+if param['NbMarkers'] == 1:
+    est_axs.bar(np.arange(param['NbSample']), PEE_dist[i, :])
+else:
+    for i in range(param['NbMarkers']):
+        est_axs[i].bar(np.arange(param['NbSample']), PEE_dist[i, :])
+
+
+# # 2/ plot 3D measured poses and estimated
+fig2 = plt.figure()
+ax = fig2.add_subplot(111, projection='3d')
+PEEm_LM2d = PEEm_LM.reshape((param['NbMarkers']*3, param["NbSample"]))
+PEEe_sol2d = PEEe_sol.reshape((param['NbMarkers']*3, param["NbSample"]))
+print(PEEm_LM2d.shape, PEEe_sol2d.shape)
+for i in range(param['NbMarkers']):
+    ax.scatter3D(PEEm_LM2d[i*3, :], PEEm_LM2d[i*3+1, :],
+                 PEEm_LM2d[i*3+2, :], color='blue')
+    # ax.scatter3D(PEEe_sol2d[i*3, :], PEEe_sol2d[i*3+1, :],
+    #              PEEe_sol2d[i*3+2, :], color='red')
+plt.show()
+
+
+# display few configurations
+# viz = MeshcatVisualizer(
+#     model=robot.model, collision_model=robot.collision_model,
+#     visual_model=robot.visual_model, url='classical'
+# )
+# time.sleep(3)
+# for i in range(NbSample):
+#     viz.display(q_LM[i, :])
+#     time.sleep(1)
+
 # est_axs[0].bar(np.arange(param['NbSample']), PEEe_dist[0, :] -
 #                PEEm_dist[0, :], label='bottom left')
 # est_axs[1].bar(np.arange(param['NbSample']), PEEe_dist[1, :] -
@@ -277,7 +327,7 @@ print("optimality: ", LM_solve.optimality)
 # est_axs[2].legend()
 # est_axs[3].legend()
 
-# # Estimated values of parameters
+# # 2/ Estimated values of parameters
 # plt.figure(figsize=(7.5, 6))
 # if dataSet == 'sample':
 #     plt.barh(params_name, (LM_solve.x - var_sample), align='center')
