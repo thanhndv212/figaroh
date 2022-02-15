@@ -204,7 +204,7 @@ def extract_expData4Mkr(path_to_file, param, del_list=[]):
     # del_list = [13, 28]  # no clean Nov 30
 
     # list of "bad" data samples of Talos exp data
-    del_list = [0, 46, 58]
+    # del_list = [0, 46, 50, 55, 56, 58]
     # # first 12 cols: xyz positions of 4 markers
     # xyz_4Mkr = np.delete(pd.read_csv(
     #     path_to_file, usecols=list(range(0, param['NbMarkers']*3))).to_numpy(), del_list, axis=0)
@@ -317,12 +317,12 @@ def init_var(param, mode=0, base_model=True):
 
     elif mode == 1:
         # 6D base frame
-        qBase_0 = np.array([0.0, 0.0, 0.0, 0., 0., 0.])
+        qBase_0 = np.array([-0.16, 0.047, 0.16, 0., 0., 0.])
         # parameter variation at joints
         if param['calib_model'] == 'joint_ offset':
-            offset_0 = np.random.uniform(-0.1, 0.1, (param['NbJoint'],))
+            offset_0 = np.random.uniform(-0.005, 0.005, (param['NbJoint'],))
         elif param['calib_model'] == 'full_params':
-            offset_0 = np.random.uniform(-0.1, 0.1, (param['NbJoint']*6,))
+            offset_0 = np.random.uniform(-0.005, 0.005, (param['NbJoint']*6,))
         # markers variables
         qEE_0 = np.full((param['NbMarkers']*param['calibration_index'],), 0)
     # robot_name = "Tiago"
@@ -499,10 +499,11 @@ def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True):
                                             var_rs[8, 4] = var[33]
                                             if param['NbJoint'] > 8:
                                                 # arm6
-                                                var_rs[8, 1] = var[34]
-                                                var_rs[8, 2] = var[35]
-                                                var_rs[8, 4] = var[36]
-                                                var_rs[8, 5] = var[37]
+                                                var_rs[9, 1] = var[34]
+                                                var_rs[9, 2] = var[35]
+                                                var_rs[9, 4] = var[36]
+                                                var_rs[9, 5] = var[37]
+
             # 38 base parameters for talos torso-arm, first 6 assigned to base frame
 
     # frame trasformation matrix from mocap to base
@@ -533,16 +534,17 @@ def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True):
             # update joint geometric parameters with values stored in var_rs
             # NOTE: jointPlacements modify the model of robot, revert the
             # updates after done calculatioin
-            for j in range(param['NbJoint']):
+            for j, joint_idx in enumerate(param['actJoint_idx']):
                 joint_placement = cartesian_to_SE3(var_rs[j+1, :])
                 # model.jointPlacements[j].translation += joint_placement.translation
                 # model.jointPlacements[j].rotation += joint_placement.rotation (matrix addition => possibly wrong)
-                model.jointPlacements[j].translation += var_rs[j+1, 0: 3]
+                temp_translation = model.jointPlacements[joint_idx].translation
+                model.jointPlacements[joint_idx].translation += var_rs[j+1, 0: 3]
                 new_rpy = pin.rpy.matrixToRpy(
-                    model.jointPlacements[j].rotation) + var_rs[j+1, 3:6]
-                model.jointPlacements[j].rotation = pin.rpy.rpyToMatrix(
+                    model.jointPlacements[joint_idx].rotation) + var_rs[j+1, 3:6]
+                model.jointPlacements[joint_idx].rotation = pin.rpy.rpyToMatrix(
                     new_rpy)
-
+                after_translation = model.jointPlacements[joint_idx].translation
             pin.framesForwardKinematics(model, data, config)
             pin.updateFramePlacements(model, data)
 
@@ -568,15 +570,18 @@ def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True):
                 PEE_marker[3:6, i] = pin.rpy.matrixToRpy(PEE_rot)
 
             # revert the updates above/restore original state of robot.model
-            for j in range(param['NbJoint']):
+            for j, joint_idx in enumerate(param['actJoint_idx']):
                 joint_placement = cartesian_to_SE3(var_rs[j+1, :])
                 # model.jointPlacements[j].translation -= joint_placement.translation
                 # model.jointPlacements[j].rotation -= joint_placement.rotation (matrix addition => possibly wrong)
-                model.jointPlacements[j].translation -= var_rs[j+1, 0:3]
+                model.jointPlacements[joint_idx].translation -= var_rs[j+1, 0:3]
                 update_rpy = pin.rpy.matrixToRpy(
-                    model.jointPlacements[j].rotation) - var_rs[j+1, 3:6]
-                model.jointPlacements[j].rotation = pin.rpy.rpyToMatrix(
+                    model.jointPlacements[joint_idx].rotation) - var_rs[j+1, 3:6]
+                model.jointPlacements[joint_idx].rotation = pin.rpy.rpyToMatrix(
                     update_rpy)
+
+            # TODO: to add changement of joint placements after reverting back to original version
+            # stop process, send warning message!!
 
         # flatten ee's coordinates to 1D array
         PEE_marker = PEE_marker.flatten('C')

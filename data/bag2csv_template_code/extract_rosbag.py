@@ -3,7 +3,7 @@ from re import split
 import pandas as pd
 import numpy as np
 import rospy
-import dask.dataframe as dd
+# import dask.dataframe as dd
 
 from sys import argv
 import os
@@ -185,25 +185,43 @@ def main():
     # for i in t0:
     #     for j in range(NbSample):
     #         t_list.append(i + j*period)
-    t_list = [20., 37.5, 54.,
-              70.35, 88., 105.7,
-              121.5, 139.2, 155.55,
-              174.74, 189.5, 207.2,
-              224.95, 242.65, 258.46,
-              276.164, 291.95, 308.71,
-              327.37, 342.69, 360.]
+    # 09/02/2022
+    # t_list = [20., 37.5, 54.,
+    #           70.35, 88., 105.7,
+    #           121.5, 139.2, 155.55,
+    #           174.74, 189.5, 207.2,
+    #           224.95, 242.65, 258.46,
+    #           276.164, 291.95, 308.71,
+    #           327.37, 342.69, 360.]
+    # 10/02/2022
+    t_list = [25., 42.4, 57.6, 75.,
+              92.4, 109.7, 126.1, 143.5,
+              160.88, 178.2, 193.5, 212.,
+              229.37, 245.68, 262.2, 279.37,
+              297.86, 315.25, 331.55, 350.,
+              366.34, 382.65, 400., 416.35,
+              433.74, 451.13, 468.53, 484.83,
+              503.31, 553.32,
+              570.71, 588.1, 604.41, 621.8,
+              640.28, 655.5, 672.9, 690.29,
+              708.77, 725.07, 742.47, 758.77,
+              776.16, 792.47, 809.87, 826.17,
+              843.57, 860.96, 877.26, 894.66,
+              913.14, 928.36, 945.75, 963.14,
+              980.54, 996.84, 1014.24, 1031.63,
+              1050.11, 1065.33, 1093.81, 1100.12]
     t_list.sort()
     print(t_list)
     # extract mocap data
-    path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/tf.csv'
+    # path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/tf.csv'
+    path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_feb/calib_torso_armleft_crane_2022-02-10-14-42-21/tf.csv'
+
     frame_names = ['"waist_frame"', '"left_hand_frame"']
     talos_dict = extract_tfbag(path_to_csv, frame_names)
 
-    # TODO: project end effector onto waist frame, pick up data samples at exact t_list
-
     # # extract joint configurations data
-    path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/introspection_datavalues.csv'
-    path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/introspection_datanames.csv'
+    path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_feb/calib_torso_armleft_crane_2022-02-10-14-42-21/introspection_datavalues.csv'
+    path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_feb/calib_torso_armleft_crane_2022-02-10-14-42-21/introspection_datanames.csv'
     actJoint_val = extract_joint_pos(path_to_values, path_to_names, t_list)
 
     W_pos = talos_dict[frame_names[0]]
@@ -252,11 +270,9 @@ def main():
     # ax.scatter(LHt_idx, LH_sample[:, 3])
     # plt.show()
 
-    # TODO:  write to csv file
-    # write in order of (t,x,y,z,q_torso1, q_torso2, ..., q_arm7)
     path_save_ep = join(
         dirname(dirname(str(abspath(__file__)))),
-        f"talos/talos_feb_arm_2_contact.csv")
+        f"talos/talos_feb_arm_02_10_contact.csv")
     with open(path_save_ep, "w") as output_file:
         w = csv.writer(output_file)
         for i in range(len(t_list)):
