@@ -116,7 +116,7 @@ print(params_name)
 #############################################################
 
 # 3/ Data collection/generation
-dataSet = 'sample'  # choose data source 'sample' or 'experimental'
+dataSet = 'experimental'  # choose data source 'sample' or 'experimental'
 if dataSet == 'sample':
     # create artificial offsets
     var_sample, nvars_sample = init_var(param, mode=1)
@@ -139,7 +139,7 @@ if dataSet == 'sample':
 
 elif dataSet == 'experimental':
     # read csv file output joint configs and marker positions (tiago/talos)
-    path = '/home/dvtnguyen/calibration/figaroh/data/talos/talos_feb_arm_02_10_contact.csv'
+    path = '/home/thanhndv212/Cooking/figaroh/data/talos/talos_feb_arm_02_10_contact.csv'
     PEEm_exp, q_exp = extract_expData4Mkr(path, param)
 
     q_LM = np.copy(q_exp)
@@ -203,130 +203,137 @@ print('updated number of samples: ', param['NbSample'])
 """
 
 
-# coeff = 1e-3
+coeff = 1e-3
 
 
-# def cost_func(var, coeff, q, model, data, param, PEEm):
-#     PEEe = get_PEE_fullvar(var, q, model, data, param)
-#     # res_vect = np.append((PEEm - PEEe), np.sqrt(coeff)
-#     #                      * var[6:-param['NbMarkers']*3])
-#     res_vect = (PEEm - PEEe)
-#     return res_vect
+def cost_func(var, coeff, q, model, data, param, PEEm):
+    PEEe = get_PEE_fullvar(var, q, model, data, param)
+    res_vect = np.append((PEEm - PEEe), np.sqrt(coeff)
+                         * var[6:-param['NbMarkers']*3])
+    # res_vect = (PEEm - PEEe)
+    return res_vect
 
 
-# # initial guess
-# # mode = 1: random seed[-0.01, 0.01], mode = 0: init guess = 0
-# var_0, nvars = init_var(param, mode=1)
-# print("initial guess: ", var_0)
+# initial guess
+# mode = 1: random seed[-0.01, 0.01], mode = 0: init guess = 0
+var_0, nvars = init_var(param, mode=1)
+print("initial guess: ", var_0)
 
-# # solve
-# LM_solve = least_squares(cost_func, var_0,  method='lm', verbose=1,
-#                          args=(coeff, q_LM, model, data, param,  PEEm_LM))
+# solve
+LM_solve = least_squares(cost_func, var_0,  method='lm', verbose=1,
+                         args=(coeff, q_LM, model, data, param,  PEEm_LM))
 
-# #############################################################
+#############################################################
 
-# # Result analysis
+# Result analysis
 
-# # PEE estimated by solution
-# PEEe_sol = get_PEE_fullvar(LM_solve.x, q_LM, model,
-#                            data, param)
+# PEE estimated by solution
+PEEe_sol = get_PEE_fullvar(LM_solve.x, q_LM, model,
+                           data, param)
 
-# print(np.array_equal(PEEm_LM, PEEe_sol))
-# # root mean square error
-# rmse = np.sqrt(np.mean((PEEe_sol-PEEm_LM)**2))
+print(np.array_equal(PEEm_LM, PEEe_sol))
+# root mean square error
+rmse = np.sqrt(np.mean((PEEe_sol-PEEm_LM)**2))
 
-# print("solution: ", LM_solve.x)
-# print("minimized cost function: ", rmse)
-# print("optimality: ", LM_solve.optimality)
+print("solution: ", LM_solve.x)
+print("minimized cost function: ", rmse)
+print("optimality: ", LM_solve.optimality)
 
-# # # estimated distance from mocap to markers
-# # PEEe_xyz = PEEe_sol.reshape((param['NbMarkers']*3, param["NbSample"]))
-# # PEEe_dist = np.zeros((param['NbMarkers'], param["NbSample"]))
-# # for i in range(param["NbMarkers"]):
-# #     for j in range(param["NbSample"]):
-# #         PEEe_dist[i, j] = np.sqrt(
-# #             PEEe_xyz[i*3, j]**2 + PEEe_xyz[i*3 + 1, j]**2 + PEEe_xyz[i*3 + 2, j]**2)
-
-# # # calculate standard deviation of estimated parameter ( Khalil chapter 11)
-# # sigma_ro_sq = (LM_solve.cost**2) / \
-# #     (param['NbSample']*param['calibration_index'] - nvars)
-# # J = LM_solve.jac
-# # C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
-# # std_dev = []
-# # std_pctg = []
-# # for i in range(nvars):
-# #     std_dev.append(np.sqrt(C_param[i, i]))
-# #     std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
-# # path_save_ep = join(
-# #     dirname(dirname(str(abspath(__file__)))),
-# #     f"data/estimation_result.csv")
-# # with open(path_save_ep, "w") as output_file:
-# #     w = csv.writer(output_file)
-# #     for i in range(nvars):
-# #         w.writerow(
-# #             [
-# #                 params_name[i],
-# #                 LM_solve.x[i],
-# #                 std_dev[i],
-# #                 std_pctg[i]
-# #             ]
-# #         )
-# # print("standard deviation: ", std_dev)
-
-# #############################################################
-
-# # Plot results
-# # # 1/ Errors between estimated position and measured position of markers
-
-# """ PEEm_LM: 1D array (x,y,z) of measured positions of markers
-#     PEEe_sol: 1D array (x,y,z) of estimated positions of markers from optimal solution
-# """
-# delta_PEE = PEEe_sol - PEEm_LM
-# PEE_xyz = delta_PEE.reshape((param['NbMarkers']*3, param["NbSample"]))
-# PEE_dist = np.zeros((param['NbMarkers'], param["NbSample"]))
+# # estimated distance from mocap to markers
+# PEEe_xyz = PEEe_sol.reshape((param['NbMarkers']*3, param["NbSample"]))
+# PEEe_dist = np.zeros((param['NbMarkers'], param["NbSample"]))
 # for i in range(param["NbMarkers"]):
 #     for j in range(param["NbSample"]):
-#         PEE_dist[i, j] = np.sqrt(
-#             PEE_xyz[i*3, j]**2 + PEE_xyz[i*3 + 1, j]**2 + PEE_xyz[i*3 + 2, j]**2)
+#         PEEe_dist[i, j] = np.sqrt(
+#             PEEe_xyz[i*3, j]**2 + PEEe_xyz[i*3 + 1, j]**2 + PEEe_xyz[i*3 + 2, j]**2)
 
-# est_fig, est_axs = plt.subplots(param['NbMarkers'], 1)
-# est_fig.suptitle(
-#     "Relative errors between estimated markers and measured markers in position (m) ")
-# if param['NbMarkers'] == 1:
-#     est_axs.bar(np.arange(param['NbSample']), PEE_dist[i, :])
-# else:
-#     for i in range(param['NbMarkers']):
-#         est_axs[i].bar(np.arange(param['NbSample']), PEE_dist[i, :])
+# calculate standard deviation of estimated parameter ( Khalil chapter 11)
+sigma_ro_sq = (LM_solve.cost**2) / \
+    (param['NbSample']*param['calibration_index'] - nvars)
+J = LM_solve.jac
+C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
+std_dev = []
+std_pctg = []
+for i in range(nvars):
+    std_dev.append(np.sqrt(C_param[i, i]))
+    std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
+path_save_ep = join(
+    dirname(dirname(str(abspath(__file__)))),
+    f"data/talos/62points_estimation_result.csv")
+with open(path_save_ep, "w") as output_file:
+    w = csv.writer(output_file)
+    for i in range(nvars):
+        w.writerow(
+            [
+                params_name[i],
+                LM_solve.x[i],
+                std_dev[i],
+                std_pctg[i]
+            ]
+        )
+print("standard deviation: ", std_dev)
 
-# # detect "bad" data
-# del_list = []
-# scatter_size = np.zeros_like(PEE_dist)
-# for i in range(param['NbMarkers']):
-#     for k in range(param['NbSample']):
-#         if PEE_dist[i, k] > 0.035:
-#             del_list.append((i, k))
-#     scatter_size[i, :] = 20*PEE_dist[i, :]/np.min(PEE_dist[i, :])
-# print(del_list)
+#############################################################
 
+# Plot results
 
-# # # 2/ plot 3D measured poses and estimated
-# fig2 = plt.figure(2)
-# ax = fig2.add_subplot(111, projection='3d')
-# PEEm_LM2d = PEEm_LM.reshape((param['NbMarkers']*3, param["NbSample"]))
-# PEEe_sol2d = PEEe_sol.reshape((param['NbMarkers']*3, param["NbSample"]))
-# print(PEEm_LM2d.shape, PEEe_sol2d.shape)
-# for i in range(param['NbMarkers']):
-#     ax.scatter3D(PEEm_LM2d[i*3, :], PEEm_LM2d[i*3+1, :],
-#                  PEEm_LM2d[i*3+2, :], color='blue')
-#     ax.scatter3D(PEEe_sol2d[i*3, :], PEEe_sol2d[i*3+1, :],
-#                  PEEe_sol2d[i*3+2, :], color='red')
+""" PEEm_LM: 1D array (x,y,z) of measured positions of markers
+    PEEe_sol: 1D array (x,y,z) of estimated positions of markers from optimal solution
+"""
+delta_PEE = PEEe_sol - PEEm_LM
+PEE_xyz = delta_PEE.reshape((param['NbMarkers']*3, param["NbSample"]))
+PEE_dist = np.zeros((param['NbMarkers'], param["NbSample"]))
+for i in range(param["NbMarkers"]):
+    for j in range(param["NbSample"]):
+        PEE_dist[i, j] = np.sqrt(
+            PEE_xyz[i*3, j]**2 + PEE_xyz[i*3 + 1, j]**2 + PEE_xyz[i*3 + 2, j]**2)
 
-# fig3 = plt.figure(3)
-# ax3 = fig3.add_subplot(111, projection='3d')
-# for i in range(param['NbMarkers']):
-#     ax3.scatter3D(PEEm_LM2d[i*3, :], PEEm_LM2d[i*3+1, :],
-#                   PEEm_LM2d[i*3+2, :], s=scatter_size[i, :], color='green')
+# detect "bad" data
+del_list = []
+scatter_size = np.zeros_like(PEE_dist)
+for i in range(param['NbMarkers']):
+    for k in range(param['NbSample']):
+        if PEE_dist[i, k] > 0.02:
+            del_list.append((i, k))
+    scatter_size[i, :] = 20*PEE_dist[i, :]/np.min(PEE_dist[i, :])
+print(del_list)
 
+# # 1/ Errors between estimated position and measured position of markers
+
+fig1, ax1 = plt.subplots(param['NbMarkers'], 1)
+fig1.suptitle(
+    "Relative errors between estimated markers and measured markers in position (m) ")
+if param['NbMarkers'] == 1:
+    ax1.bar(np.arange(param['NbSample']), PEE_dist[i, :])
+else:
+    for i in range(param['NbMarkers']):
+        ax1[i].bar(np.arange(param['NbSample']), PEE_dist[i, :])
+ax1.set_xlabel('Sample')
+ax1.set_ylabel('Error (meter)')
+
+# # 2/ plot 3D measured poses and estimated
+fig2 = plt.figure(2)
+ax2 = fig2.add_subplot(111, projection='3d')
+PEEm_LM2d = PEEm_LM.reshape((param['NbMarkers']*3, param["NbSample"]))
+PEEe_sol2d = PEEe_sol.reshape((param['NbMarkers']*3, param["NbSample"]))
+print(PEEm_LM2d.shape, PEEe_sol2d.shape)
+for i in range(param['NbMarkers']):
+    ax2.scatter3D(PEEm_LM2d[i*3, :], PEEm_LM2d[i*3+1, :],
+                  PEEm_LM2d[i*3+2, :], color='blue')
+    ax2.scatter3D(PEEe_sol2d[i*3, :], PEEe_sol2d[i*3+1, :],
+                  PEEe_sol2d[i*3+2, :], color='red')
+ax2.set_xlabel('X - front (meter)')
+ax2.set_ylabel('Y - side (meter)')
+ax2.set_zlabel('Z - height (meter)')
+
+# 3/ visualize relative deviation between measure and estimate
+fig3 = plt.figure(3)
+ax3 = fig3.add_subplot(111, projection='3d')
+for i in range(param['NbMarkers']):
+    ax3.scatter3D(PEEm_LM2d[i*3, :], PEEm_LM2d[i*3+1, :],
+                  PEEm_LM2d[i*3+2, :], s=scatter_size[i, :], color='green')
+
+# 4/ joint configurations within range bound
 fig4 = plt.figure()
 ax4 = fig4.add_subplot(111, projection='3d')
 lb = ub = []
@@ -360,18 +367,18 @@ plt.show()
 #     viz.display(q_LM[i, :])
 #     time.sleep(1)
 
-# est_axs[0].bar(np.arange(param['NbSample']), PEEe_dist[0, :] -
+# ax1[0].bar(np.arange(param['NbSample']), PEEe_dist[0, :] -
 #                PEEm_dist[0, :], label='bottom left')
-# est_axs[1].bar(np.arange(param['NbSample']), PEEe_dist[1, :] -
+# ax1[1].bar(np.arange(param['NbSample']), PEEe_dist[1, :] -
 #                PEEm_dist[1, :], label='bottom right')
-# est_axs[2].bar(np.arange(param['NbSample']), PEEe_dist[2, :] -
+# ax1[2].bar(np.arange(param['NbSample']), PEEe_dist[2, :] -
 #                PEEm_dist[2, :], label='top left')
-# est_axs[3].bar(np.arange(param['NbSample']), PEEe_dist[3, :] -
+# ax1[3].bar(np.arange(param['NbSample']), PEEe_dist[3, :] -
 #                PEEm_dist[3, :], label='bottom right')
-# est_axs[0].legend()
-# est_axs[1].legend()
-# est_axs[2].legend()
-# est_axs[3].legend()
+# ax1[0].legend()
+# ax1[1].legend()
+# ax1[2].legend()
+# ax1[3].legend()
 
 # # 2/ Estimated values of parameters
 # plt.figure(figsize=(7.5, 6))
