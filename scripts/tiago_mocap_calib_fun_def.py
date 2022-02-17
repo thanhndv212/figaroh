@@ -204,7 +204,7 @@ def extract_expData4Mkr(path_to_file, param, del_list=[]):
     # del_list = [13, 28]  # no clean Nov 30
 
     # list of "bad" data samples of Talos exp data
-    # del_list = [0, 46, 50, 55, 56, 58]
+    del_list = [0]
     # # first 12 cols: xyz positions of 4 markers
     # xyz_4Mkr = np.delete(pd.read_csv(
     #     path_to_file, usecols=list(range(0, param['NbMarkers']*3))).to_numpy(), del_list, axis=0)

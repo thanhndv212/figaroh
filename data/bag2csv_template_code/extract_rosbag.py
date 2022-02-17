@@ -12,6 +12,8 @@ from os.path import dirname, join, abspath
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+import pinocchio as pin
+
 # for msg in read_values:
 #     first_row = msg.replace('[', '')
 #     first_row = first_row.replace(']', '')
@@ -42,15 +44,29 @@ def extract_tfbag(path_to_csv, frame_names):
     y_col = "y"
     z_col = "z"
 
+    # orientation
+    w_col = "w"
+    ux_col = "ux"
+    uy_col = "uy"
+    uz_col = "uz"
     # time
     sec_col = "secs"
     nsec_col = "nsecs"
 
+    # TODO: check if all names are correctly presented in headers of csv file
+
     # read values
     frame_val = df.loc[:, frame_col].values
+
     x_val = df.loc[:, x_col].values
     y_val = df.loc[:, y_col].values
     z_val = df.loc[:, z_col].values
+
+    ux_val = df.loc[:, ux_col].values
+    uy_val = df.loc[:, uy_col].values
+    uz_val = df.loc[:, uz_col].values
+    w_val = df.loc[:, w_col].values
+
     sec_val = df.loc[:, sec_col].values
     nsec_val = df.loc[:, nsec_col].values
 
@@ -69,13 +85,21 @@ def extract_tfbag(path_to_csv, frame_names):
         x = []
         y = []
         z = []
+        ux = []
+        uy = []
+        uz = []
+        w = []
         for i in range(frame_val.shape[0]):
             if frame_val[i] == frame_name:
                 t.append(t_val[i])
                 x.append(x_val[i])
                 y.append(y_val[i])
                 z.append(z_val[i])
-        tf_dict[frame_name] = np.array([t, x, y, z])
+                ux.append(ux_val[i])
+                uy.append(uy_val[i])
+                uz.append(uz_val[i])
+                w.append(w_val[i])
+        tf_dict[frame_name] = np.array([t, x, y, z, ux, uy, uz, w])
     return tf_dict
 
 
@@ -261,20 +285,23 @@ def main():
     LH_W_sample[:, 2] = LH_sample[:, 2] - W_sample[:, 2]
     LH_W_sample[:, 3] = LH_sample[:, 3] - W_sample[:, 3]
 
-    # plot
+    LH_W_sample = np.empty((len(t_list), 4))
+    LH_W_sample[:, 0] = LH_sample[:, 0]
+    for i in range(len(t_list)):
+        W_se3 = pin.XYZQUATToSE3(W_sample[i, 1:])
+        LH_se3 = pin.XYZQUATToSE3(LH_sample[i, 1:])
+        LH_W = pin.SE3.inverse(W_se3)*LH_se3
+        LH_W_sample[i, 1:] = LH_W.translation
 
-    # fig = plt.figure()
-    # ax = fig.subplots(1, 1)
-
-    # ax.plot(LH_pos[3, :])
-    # ax.scatter(LHt_idx, LH_sample[:, 3])
-    # plt.show()
-
+   # write to csv
     path_save_ep = join(
         dirname(dirname(str(abspath(__file__)))),
         f"talos/talos_feb_arm_02_10_contact.csv")
+    headers = ["t", "x1", "y1", "z1", "torso1", "torso2", "armL1",
+               "armL2", "armL3", "armL4", "armL5", "armL6", "armL7"]
     with open(path_save_ep, "w") as output_file:
         w = csv.writer(output_file)
+        w.writewrow(headers)
         for i in range(len(t_list)):
             row = list(np.append(LH_W_sample[i, :], actJoint_val[i, :]))
             w.writerow(row)
