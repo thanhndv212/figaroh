@@ -139,7 +139,7 @@ if dataSet == 'sample':
 
 elif dataSet == 'experimental':
     # read csv file output joint configs and marker positions (tiago/talos)
-    path = '/home/thanhndv212/Cooking/figaroh/data/talos/talos_feb_arm_02_10_contact.csv'
+    path = '/home/dvtnguyen/calibration/figaroh/data/talos/talos_feb_arm_02_10_contact.csv'
     PEEm_exp, q_exp = extract_expData4Mkr(path, param)
 
     q_LM = np.copy(q_exp)
@@ -280,6 +280,17 @@ print("standard deviation: ", std_dev)
 """ PEEm_LM: 1D array (x,y,z) of measured positions of markers
     PEEe_sol: 1D array (x,y,z) of estimated positions of markers from optimal solution
 """
+#########################
+# test validation
+path = '/home/dvtnguyen/calibration/figaroh/data/talos/talos_feb_arm_02_07_crane.csv'
+PEEm_exp, q_exp = extract_expData4Mkr(path, param)
+
+q_LM = np.copy(q_exp)
+PEEm_LM = np.copy(PEEm_exp)
+param['NbSample'] = q_LM.shape[0]
+PEEe_sol = get_PEE_fullvar(LM_solve.x, q_LM, model,
+                           data, param)
+###############
 delta_PEE = PEEe_sol - PEEm_LM
 PEE_xyz = delta_PEE.reshape((param['NbMarkers']*3, param["NbSample"]))
 PEE_dist = np.zeros((param['NbMarkers'], param["NbSample"]))

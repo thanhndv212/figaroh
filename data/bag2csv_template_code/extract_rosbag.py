@@ -14,21 +14,13 @@ from mpl_toolkits.mplot3d import Axes3D
 
 import pinocchio as pin
 
-# for msg in read_values:
-#     first_row = msg.replace('[', '')
-#     first_row = first_row.replace(']', '')
-#     split_data = first_row.split(',')
-#     if len(split_data) - 4 == len(d):  # ignore first 4 columns
-#         for i in range(4, len(split_data)):
-#             # split_data[i] = float(split_data[i])
-#             d[names[i-4]].append(float(split_data[i]))
-
 
 def extract_tfbag(path_to_csv, frame_names):
     """ Extract Qualysis data from tf bag of PAL robots,
-        frame_name: list of str, frame defined in Qualisys streamed and recorded in rosbag
-        output: traslation x, y, z
-                rotation roll, pitch, yaw
+        Input:  path_to_csv: path to csv file
+                frame_name: list of str, frame defined in Qualisys streamed and recorded in rosbag
+        Output: a dictionary
+                keys: frame_names /values: [time, xyzquaternion]
     """
     tf_dict = {}
 
@@ -49,6 +41,7 @@ def extract_tfbag(path_to_csv, frame_names):
     ux_col = "ux"
     uy_col = "uy"
     uz_col = "uz"
+
     # time
     sec_col = "secs"
     nsec_col = "nsecs"
@@ -79,7 +72,6 @@ def extract_tfbag(path_to_csv, frame_names):
             sec_val[i], nsec_val[i]).to_sec() - starting_t)
 
     # tf_dict (dict): return a dict contain key/item = frame_name(str)/numpy array
-
     for frame_name in frame_names:
         t = []
         x = []
@@ -205,11 +197,14 @@ def main():
     # t0 = [20., 37.5, 54.]
     # period = 49
     # NbSample = 9
-    # t_list = []
+
     # for i in t0:
     #     for j in range(NbSample):
     #         t_list.append(i + j*period)
-    # 09/02/2022
+    # 07/02/2022 air
+    t_list = [22.4, 38.6, 56.3, 74.1, 90.6, 107., 125.7, 142.9, 158.2, 175.9, 192.4, 210.1, 226.6, 244.4,
+              262.5, 279., 295.5, 313.5]
+    # 09/02/2022 contact
     # t_list = [20., 37.5, 54.,
     #           70.35, 88., 105.7,
     #           121.5, 139.2, 155.55,
@@ -217,35 +212,35 @@ def main():
     #           224.95, 242.65, 258.46,
     #           276.164, 291.95, 308.71,
     #           327.37, 342.69, 360.]
-    # 10/02/2022
-    t_list = [25., 42.4, 57.6, 75.,
-              92.4, 109.7, 126.1, 143.5,
-              160.88, 178.2, 193.5, 212.,
-              229.37, 245.68, 262.2, 279.37,
-              297.86, 315.25, 331.55, 350.,
-              366.34, 382.65, 400., 416.35,
-              433.74, 451.13, 468.53, 484.83,
-              503.31, 553.32,
-              570.71, 588.1, 604.41, 621.8,
-              640.28, 655.5, 672.9, 690.29,
-              708.77, 725.07, 742.47, 758.77,
-              776.16, 792.47, 809.87, 826.17,
-              843.57, 860.96, 877.26, 894.66,
-              913.14, 928.36, 945.75, 963.14,
-              980.54, 996.84, 1014.24, 1031.63,
-              1050.11, 1065.33, 1093.81, 1100.12]
+    # 10/02/2022 air
+    # t_list = [25., 42.4, 57.6, 75.,
+    #           92.4, 109.7, 126.1, 143.5,
+    #           160.88, 178.2, 193.5, 212.,
+    #           229.37, 245.68, 262.2, 279.37,
+    #           297.86, 315.25, 331.55, 350.,
+    #           366.34, 382.65, 400., 416.35,
+    #           433.74, 451.13, 468.53, 484.83,
+    #           503.31, 553.32,
+    #           570.71, 588.1, 604.41, 621.8,
+    #           640.28, 655.5, 672.9, 690.29,
+    #           708.77, 725.07, 742.47, 758.77,
+    #           776.16, 792.47, 809.87, 826.17,
+    #           843.57, 860.96, 877.26, 894.66,
+    #           913.14, 928.36, 945.75, 963.14,
+    #           980.54, 996.84, 1014.24, 1031.63,
+    #           1050.11, 1065.33, 1093.81, 1100.12]
     t_list.sort()
     print(t_list)
     # extract mocap data
     # path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/tf.csv'
-    path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_feb/calib_torso_armleft_crane_2022-02-10-14-42-21/tf.csv'
+    path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_1_air_2022-02-04-13-57-29/tf.csv'
 
     frame_names = ['"waist_frame"', '"left_hand_frame"']
     talos_dict = extract_tfbag(path_to_csv, frame_names)
 
     # # extract joint configurations data
-    path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_feb/calib_torso_armleft_crane_2022-02-10-14-42-21/introspection_datavalues.csv'
-    path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_feb/calib_torso_armleft_crane_2022-02-10-14-42-21/introspection_datanames.csv'
+    path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_1_air_2022-02-04-13-57-29/introspection_datavalues.csv'
+    path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_1_air_2022-02-04-13-57-29/introspection_datanames.csv'
     actJoint_val = extract_joint_pos(path_to_values, path_to_names, t_list)
 
     W_pos = talos_dict[frame_names[0]]
@@ -296,12 +291,12 @@ def main():
    # write to csv
     path_save_ep = join(
         dirname(dirname(str(abspath(__file__)))),
-        f"talos/talos_feb_arm_02_10_contact.csv")
+        f"talos/talos_feb_arm_02_07_crane.csv")
     headers = ["t", "x1", "y1", "z1", "torso1", "torso2", "armL1",
                "armL2", "armL3", "armL4", "armL5", "armL6", "armL7"]
     with open(path_save_ep, "w") as output_file:
         w = csv.writer(output_file)
-        w.writewrow(headers)
+        w.writerow(headers)
         for i in range(len(t_list)):
             row = list(np.append(LH_W_sample[i, :], actJoint_val[i, :]))
             w.writerow(row)
