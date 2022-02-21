@@ -69,7 +69,7 @@ def display(robot, model,  q):
 # TODO: define in config file, parse from there
 
 
-def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,  calib_model='full_params', calib_idx=3):
+def get_param_depricated(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,  calib_model='full_params', calib_idx=3):
     tool_FrameId = robot.model.getFrameId(TOOL_NAME)
     parentJoint2Tool_Id = robot.model.frames[tool_FrameId].parent
     NbJoint = parentJoint2Tool_Id  # joint #0 is  universe
@@ -94,6 +94,62 @@ def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,  calib_
     return param
 
 # TODO: to add to a class
+
+
+def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,
+              calib_model='full_params', calib_idx=3):
+
+    # NOTE: since joint 0 is universe and it is trivial,
+    # indices of joints are different from indices of joint configuration,
+    # different from indices of joint velocities
+
+    # robot_name: anchor as a reference point for executing
+    robot_name = robot.model.name
+    # q0: default zero configuration
+    q0 = robot.q0
+    # IDX_TOOL: frame ID of the tool
+    IDX_TOOL = robot.model.getFrameId(TOOL_NAME)
+    # tool_joint: ID of the joint right before the tool's frame (parent)
+    tool_joint = robot.model.frames[IDX_TOOL].parent
+    # indices of active joints: from base to tool_joint (exclude the first universe joint)
+    actJoint_idx = robot.model.supports[tool_joint].tolist()[1:]
+    # indices of joint configuration corresponding to active joints
+    Ind_joint = [robot.model.joints[i].idx_q for i in actJoint_idx]
+    # number of active joints
+    NbJoint = len(actJoint_idx)
+    # optimizing variable in optimization code
+    x_opt_prev = np.zeros([NbJoint])
+
+    print('robot name: ', robot_name)
+
+    print("tool name: ", TOOL_NAME)
+    print("parent joint of tool frame: ",
+          robot.model.names[tool_joint])
+    print("number of active joint: ", NbJoint)
+    print("names of active joint: ")
+    for i in actJoint_idx:
+        print(robot.model.names[i], robot.model.joints[i].idx_q)
+
+    print("number of markers: ", NbMarkers)
+    print("calibration model: ", calib_model)
+    print('calibration_index: ', calib_idx)
+    param = {
+        'robot_name': robot_name,
+        'q0': q0,
+        'x_opt_prev': x_opt_prev,
+        'NbSample': NbSample,
+        'IDX_TOOL': IDX_TOOL,
+        'tool_joint': tool_joint,
+        'eps': 1e-3,
+        'Ind_joint': Ind_joint,
+        'actJoint_idx': actJoint_idx,
+        'PLOT': 0,
+        'NbMarkers': NbMarkers,
+        'calib_model': calib_model,  # 'joint_offset' / 'full_params'
+        'calibration_index': calib_idx,  # 3 / 6
+        'NbJoint': NbJoint
+    }
+    return param
 
 
 def get_jointOffset(joint_names):
@@ -193,17 +249,17 @@ def extract_expData4Mkr(path_to_file, param, del_list=[]):
                 i-th marker position: xi, yi, zi
                 i-th marker orientation: phixi, phiyi, phizi (not used atm)
                 active joint angles: 
-                    Tiago: torso, arm1, arm2, arm3, arm4, arm5, arm6, arm7
-                    Talos: torso1, torso2, armL1, armL2, armL3, armL4, armL5, armL6, armL7
+                    tiago: torso, arm1, arm2, arm3, arm4, arm5, arm6, arm7
+                    talos: torso1, torso2, armL1, armL2, armL3, armL4, armL5, armL6, armL7
     """
-    # list of "bad" data samples of Tiago exp data
+    # list of "bad" data samples of tiago exp data
     # del_list = [4, 8, -3, -1] # calib_data_oct
     # del_list = [2, 26, 39]  # calib_nov_64
     # del_list = [1, 2, 4, 5, 10, 13, 19, 22,
     #             23, 24, 28, 33, -3, -2]  # clean Nov 30
     # del_list = [13, 28]  # no clean Nov 30
 
-    # list of "bad" data samples of Talos exp data
+    # list of "bad" data samples of talos exp data
     del_list = [0]
     # # first 12 cols: xyz positions of 4 markers
     # xyz_4Mkr = np.delete(pd.read_csv(
@@ -240,10 +296,10 @@ def extract_expData4Mkr(path_to_file, param, del_list=[]):
 
     joint_headers = []
     # create headers for joint configurations
-    if param['robot_name'] == "Tiago":
+    if param['robot_name'] == "tiago":
         joint_headers = ['torso', 'arm1', 'arm2', 'arm3', 'arm4',
                          'arm5', 'arm6', 'arm7']
-    elif param['robot_name'] == "Talos":
+    elif param['robot_name'] == "talos":
         joint_headers = ['torso1', 'torso2', 'armL1', 'armL2', 'armL3',
                          'armL4', 'armL5', 'armL6', 'armL7']
     # check if all created headers present in csv file
@@ -271,9 +327,9 @@ def extract_expData4Mkr(path_to_file, param, del_list=[]):
     PEEm_exp = PEEm_exp.flatten('C')
 
     q_exp = np.empty((param['NbSample'], param['q0'].shape[0]))
-    if param['robot_name'] == 'Tiago':
+    if param['robot_name'] == 'tiago':
         pass
-    elif param['robot_name'] == 'Talos':
+    elif param['robot_name'] == 'talos':
         for i in range(param['NbSample']):
             config = param['q0']
             config[param['Ind_joint']] = q_act[i, :]
@@ -325,10 +381,10 @@ def init_var(param, mode=0, base_model=True):
             offset_0 = np.random.uniform(-0.005, 0.005, (param['NbJoint']*6,))
         # markers variables
         qEE_0 = np.full((param['NbMarkers']*param['calibration_index'],), 0)
-    # robot_name = "Tiago"
-    # robot_name = "Talos"
-    if param['robot_name'] == 'Tiago':
-        # create list of parameters to be set as zero for Tiago, respect the order
+    # robot_name = "tiago"
+    # robot_name = "talos"
+    if param['robot_name'] == 'tiago':
+        # create list of parameters to be set as zero for tiago, respect the order
         # TODO: to be imported from a config file
         torso_list = [0, 1, 2, 3, 4, 5]
         arm1_list = [6, 7, 8, 11]
@@ -340,8 +396,8 @@ def init_var(param, mode=0, base_model=True):
         arm7_list = [43, 46]  # include phiz7
         total_list = [torso_list, arm1_list, arm2_list, arm3_list, arm4_list,
                       arm5_list, arm6_list, arm7_list]
-    elif param['robot_name'] == 'Talos':
-        # create list of parameters to be set as zero for Tiago, respect the order
+    elif param['robot_name'] == 'talos':
+        # create list of parameters to be set as zero for tiago, respect the order
         # TODO: to be imported from a config file
         torso1_list = [0, 1, 2, 3, 4, 5]
         torso2_list = [2, 5]
@@ -387,7 +443,7 @@ def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True):
     # reshape variable vector to vectors of 6
     NbFrames = 1 + param['NbJoint'] + param['NbMarkers']
 
-    if param['robot_name'] == 'Tiago':
+    if param['robot_name'] == 'tiago':
         if not base_model:
             var_rs = np.reshape(var, (NbFrames, 6))
         elif base_model:
@@ -442,7 +498,7 @@ def get_PEE_fullvar(var, q, model, data, param, noise=False, base_model=True):
                                             var_rs[8, 5] = var[31]
             # 32 base parameters for tiago, first 6 assigned to base frame
 
-    elif param['robot_name'] == 'Talos':
+    elif param['robot_name'] == 'talos':
         if not base_model:
             var_rs = np.reshape(var, (NbFrames, 6))
         elif base_model:
@@ -755,7 +811,7 @@ def Calculate_base_kinematics_regressor(q, model, data, param):
         Rrand_sel, geo_params_sel, tol_e=1e-6)
     idx_base = get_baseIndex(Rrand_e, paramsrand_e)
     Rrand_b, paramsrand_base = get_baseParams(Rrand_e, paramsrand_e)
-    print("remained parameters: ", paramsrand_e)
+    # print("remained parameters: ", paramsrand_e)
     # obtain a list of column after apply QR decomposition
     R_e, params_e = eliminate_non_dynaffect(
         R_sel, geo_params_sel, tol_e=1e-6)

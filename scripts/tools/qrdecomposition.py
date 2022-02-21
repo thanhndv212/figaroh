@@ -275,7 +275,7 @@ def get_baseIndex(W_e, params_r):
             Output: idx_base: a tuple of indices of only independent parameters.
     """
     Q, R = np.linalg.qr(W_e)
-    print(np.diag(R))
+    # print(np.diag(R))
     assert np.diag(R).shape[0] == len(
         params_r
     ), "params_r does not have same length with R"
