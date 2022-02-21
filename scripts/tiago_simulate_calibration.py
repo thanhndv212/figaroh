@@ -71,16 +71,19 @@ if dataSet == 'sample':
     # create artificial offsets
     var_sample, nvars_sample = init_var(param, mode=1)
     print("%d var_sample: " % nvars_sample, var_sample)
+
     # create sample configurations
     q_sample = np.empty((param['NbSample'], model.nq))
+
     for i in range(param['NbSample']):
-        config = pin.randomConfiguration(model)
-        config[8:] = param['q0'][8:]
+        config = param['q0']
+        config[param['Ind_joint']] = pin.randomConfiguration(model)[
+            param['Ind_joint']]
         q_sample[i, :] = config
 
     # create simulated end effector coordinates measures (PEEm)
     PEEm_sample = get_PEE_fullvar(
-        var_sample, q_sample, model, data, param, noise=False)
+        var_sample, q_sample, model, data, param)
 
     q_LM = np.copy(q_sample)
     PEEm_LM = np.copy(PEEm_sample)
@@ -93,52 +96,15 @@ elif dataSet == 'experimental':
     q_LM = np.copy(q_exp)
     PEEm_LM = np.copy(PEEm_exp)
 
-for k in range(param['NbJoint']+1):
+for joint_idx in param['actJoint_idx']:
     print('to check if model modified',
-          model.names[k], ": ", model.jointPlacements[k].translation)
+          model.names[joint_idx], ": ", model.jointPlacements[joint_idx])
 
 print('updated number of samples: ', param['NbSample'])
 
 #############################################################
 
-# # 3'/ Data inspecting (for experimental data)
-# PEEm_xyz = PEEm_LM.reshape((param['NbMarkers']*3, param["NbSample"]))
-# print(PEEm_xyz.shape)
-
-# # absolute distance from mocap to markers
-# PEEm_dist = np.zeros((param['NbMarkers'], param["NbSample"]))
-# for i in range(param["NbMarkers"]):
-#     for j in range(param["NbSample"]):
-#         PEEm_dist[i, j] = np.sqrt(
-#             PEEm_xyz[i*3, j]**2 + PEEm_xyz[i*3 + 1, j]**2 + PEEm_xyz[i*3 + 2, j]**2)
-
-#     # distance between two markers
-# err_PEE = np.zeros((2, param['NbSample']))
-# for j in range(param['NbSample']):
-#     dx_bot = PEEm_xyz[0, j]-PEEm_xyz[3, j]
-#     dy_bot = PEEm_xyz[1, j]-PEEm_xyz[4, j]
-#     dz_bot = PEEm_xyz[2, j]-PEEm_xyz[5, j]
-#     err_PEE[0, j] = np.sqrt(dx_bot**2 + dy_bot**2 + dz_bot**2)
-#     dx_top = PEEm_xyz[6, j]-PEEm_xyz[9, j]
-#     dy_top = PEEm_xyz[7, j]-PEEm_xyz[10, j]
-#     dz_top = PEEm_xyz[8, j]-PEEm_xyz[11, j]
-#     err_PEE[1, j] = np.sqrt(dx_top**2 + dy_top**2 + dz_top**2)
-
-#     # plot distance between two markers
-# dist_fig, dist_axs = plt.subplots(2)
-# dist_fig.suptitle("Relative distances between markers (m) ")
-# dist_axs[0].plot(err_PEE[0, :], label="error between 2 bottom markers")
-# dist_axs[1].plot(err_PEE[1, :], label="error between 2 top markers")
-# dist_axs[0].legend()
-# dist_axs[1].legend()
-# dist_axs[0].axhline(np.mean(err_PEE[0, :]), 0,
-#                     param['NbSample'] - 1, color='r', linestyle='--')
-# dist_axs[1].axhline(np.mean(err_PEE[1, :]), 0,
-#                     param['NbSample'] - 1, color='r', linestyle='--')
-
-#############################################################
-
-# 4/ Given a model and configurations (input), end effector positions/locations 
+# 4/ Given a model and configurations (input), end effector positions/locations
 # (output), solve an optimization problem to find offset params as variables
 
 # # NON-LINEAR model with Levenberg-Marquardt #################
@@ -170,7 +136,7 @@ LM_solve = least_squares(cost_func, var_0,  method='lm', verbose=1,
 
 #############################################################
 
-# Result analysis
+# 5/ Result analysis
 
 # PEE estimated by solution
 PEEe_sol = get_PEE_fullvar(LM_solve.x, q_LM, model, data, param, noise=False)
@@ -182,63 +148,73 @@ print("solution: ", LM_solve.x)
 print("minimized cost function: ", rmse)
 print("optimality: ", LM_solve.optimality)
 
-# estimated distance from mocap to markers
-PEEe_xyz = PEEe_sol.reshape((param['NbMarkers']*3, param["NbSample"]))
-PEEe_dist = np.zeros((param['NbMarkers'], param["NbSample"]))
-for i in range(param["NbMarkers"]):
-    for j in range(param["NbSample"]):
-        PEEe_dist[i, j] = np.sqrt(
-            PEEe_xyz[i*3, j]**2 + PEEe_xyz[i*3 + 1, j]**2 + PEEe_xyz[i*3 + 2, j]**2)
-
+print("check if get_PEE_fullvar is valid: ", np.array_equal(PEEm_LM, PEEe_sol))
 # # calculate standard deviation of estimated parameter ( Khalil chapter 11)
-sigma_ro_sq = (LM_solve.cost**2) / \
-    (param['NbSample']*param['calibration_index'] - nvars)
-J = LM_solve.jac
-C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
-std_dev = []
-std_pctg = []
-for i in range(nvars):
-    std_dev.append(np.sqrt(C_param[i, i]))
-    std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
-path_save_ep = join(
-    dirname(dirname(str(abspath(__file__)))),
-    f"data/estimation_result.csv")
-with open(path_save_ep, "w") as output_file:
-    w = csv.writer(output_file)
-    for i in range(nvars):
-        w.writerow(
-            [
-                params_name[i],
-                LM_solve.x[i],
-                std_dev[i],
-                std_pctg[i]
-            ]
-        )
-print("standard deviation: ", std_dev)
+# sigma_ro_sq = (LM_solve.cost**2) / \
+#     (param['NbSample']*param['calibration_index'] - nvars)
+# J = LM_solve.jac
+# C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
+# std_dev = []
+# std_pctg = []
+# for i in range(nvars):
+#     std_dev.append(np.sqrt(C_param[i, i]))
+#     std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
+# path_save_ep = join(
+#     dirname(dirname(str(abspath(__file__)))),
+#     f"data/estimation_result.csv")
+# with open(path_save_ep, "w") as output_file:
+#     w = csv.writer(output_file)
+#     for i in range(nvars):
+#         w.writerow(
+#             [
+#                 params_name[i],
+#                 LM_solve.x[i],
+#                 std_dev[i],
+#                 std_pctg[i]
+#             ]
+#         )
+# print("standard deviation: ", std_dev)
 
 #############################################################
 
 # Plot results
 
-# # Errors between estimated position and measured position of markers
-# est_fig, est_axs = plt.subplots(4)
-# est_fig.suptitle(
-#     "Relative errors between estimated markers and measured markers in position (m) ")
-# est_axs[0].bar(np.arange(param['NbSample']), PEEe_dist[0, :] -
-#                PEEm_dist[0, :], label='bottom left')
-# est_axs[1].bar(np.arange(param['NbSample']), PEEe_dist[1, :] -
-#                PEEm_dist[1, :], label='bottom right')
-# est_axs[2].bar(np.arange(param['NbSample']), PEEe_dist[2, :] -
-#                PEEm_dist[2, :], label='top left')
-# est_axs[3].bar(np.arange(param['NbSample']), PEEe_dist[3, :] -
-#                PEEm_dist[3, :], label='bottom right')
-# est_axs[0].legend()
-# est_axs[1].legend()
-# est_axs[2].legend()
-# est_axs[3].legend()
+# calculate difference between estimated data and measured data
+delta_PEE = PEEe_sol - PEEm_LM
+PEE_xyz = delta_PEE.reshape((param['NbMarkers']*3, param["NbSample"]))
+PEE_dist = np.zeros((param['NbMarkers'], param["NbSample"]))
+for i in range(param["NbMarkers"]):
+    for j in range(param["NbSample"]):
+        PEE_dist[i, j] = np.sqrt(
+            PEE_xyz[i*3, j]**2 + PEE_xyz[i*3 + 1, j]**2 + PEE_xyz[i*3 + 2, j]**2)
 
-# # Estimated values of parameters
-# plt.figure(figsize=(7.5, 6))
+# detect "bad" data (outlierrs)
+del_list = []
+scatter_size = np.zeros_like(PEE_dist)
+for i in range(param['NbMarkers']):
+    for k in range(param['NbSample']):
+        if PEE_dist[i, k] > 0.02:
+            del_list.append((i, k))
+    scatter_size[i, :] = 20*PEE_dist[i, :]/np.min(PEE_dist[i, :])
+print("indices of samples with >2 cm deviation: ", del_list)
+
+# # 1/ Errors between estimated position and measured position of markers
+
+fig1, ax1 = plt.subplots(param['NbMarkers'], 1)
+fig1.suptitle(
+    "Relative errors between estimated markers and measured markers in position (m) ")
+if param['NbMarkers'] == 1:
+    ax1.bar(np.arange(param['NbSample']), PEE_dist[i, :])
+    ax1.set_xlabel('Sample')
+    ax1.set_ylabel('Error (meter)')
+else:
+    for i in range(param['NbMarkers']):
+        ax1[i].bar(np.arange(param['NbSample']), PEE_dist[i, :])
+        ax1[i].set_xlabel('Sample')
+        ax1[i].set_ylabel('Error (meter)')
+
+# Estimated values of parameters
+# plt.figure(2)
 # if dataSet == 'sample':
 #     plt.barh(params_name, (LM_solve.x - var_sample), align='center')
 # elif dataSet == 'experimental':
@@ -248,6 +224,49 @@ print("standard deviation: ", std_dev)
 #     plt.barh(params_name[-3*param['NbMarkers']:],
 #              LM_solve.x[-3*param['NbMarkers']:], align='center')
 
+# # 2/ plot 3D measured poses and estimated
+fig2 = plt.figure(3)
+ax2 = fig2.add_subplot(111, projection='3d')
+PEEm_LM2d = PEEm_LM.reshape((param['NbMarkers']*3, param["NbSample"]))
+PEEe_sol2d = PEEe_sol.reshape((param['NbMarkers']*3, param["NbSample"]))
+print(PEEm_LM2d.shape, PEEe_sol2d.shape)
+for i in range(param['NbMarkers']):
+    ax2.scatter3D(PEEm_LM2d[i*3, :], PEEm_LM2d[i*3+1, :],
+                  PEEm_LM2d[i*3+2, :], color='blue')
+    ax2.scatter3D(PEEe_sol2d[i*3, :], PEEe_sol2d[i*3+1, :],
+                  PEEe_sol2d[i*3+2, :], color='red')
+ax2.set_xlabel('X - front (meter)')
+ax2.set_ylabel('Y - side (meter)')
+ax2.set_zlabel('Z - height (meter)')
+# 3/ visualize relative deviation between measure and estimate
+fig3 = plt.figure(3)
+ax3 = fig3.add_subplot(111, projection='3d')
+for i in range(param['NbMarkers']):
+    ax3.scatter3D(PEEm_LM2d[i*3, :], PEEm_LM2d[i*3+1, :],
+                  PEEm_LM2d[i*3+2, :], s=scatter_size[i, :], color='green')
+
+# 4/ joint configurations within range bound
+fig4 = plt.figure()
+ax4 = fig4.add_subplot(111, projection='3d')
+lb = ub = []
+for j in param['Ind_joint']:
+    # model.names does not accept index type of numpy int64
+    # and model.lowerPositionLimit index lag to model.names by 1
+    lb = np.append(lb, model.lowerPositionLimit[j])
+    ub = np.append(ub, model.upperPositionLimit[j])
+q_actJoint = q_LM[:, param['Ind_joint']]
+sample_range = np.arange(param['NbSample'])
+print(sample_range.shape)
+for i in range(len(param['actJoint_idx'])):
+    ax4.scatter3D(q_actJoint[:, i], sample_range, i)
+for i in range(len(param['actJoint_idx'])):
+    ax4.plot([lb[i], ub[i]], [sample_range[0],
+             sample_range[0]], [i, i])
+ax4.set_xlabel('Angle (rad)')
+ax4.set_ylabel('Sample')
+ax4.set_zlabel('Joint')
+
+plt.show()
 
 # plt.figure(2)
 # colors = ['r', 'g', 'b']
@@ -396,5 +415,5 @@ print("standard deviation: ", std_dev)
 #     # print("iteration %d: " % iter, delta_p)
 #     # print("norm: ", np.linalg.norm(delta_X))
 
-plt.grid()
-plt.show()
+# plt.grid()
+# plt.show()

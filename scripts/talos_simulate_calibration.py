@@ -26,6 +26,7 @@ from tools.qrdecomposition import get_baseParams, cond_num
 from tiago_mocap_calib_fun_def import (
     extract_expData,
     extract_expData4Mkr,
+    get_param,
     init_var,
     get_PEE_fullvar,
     get_PEE_var,
@@ -48,55 +49,9 @@ robot = Robot(
 model = robot.model
 data = robot.data
 
-
-def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,
-              calib_model='full_params', calib_idx=3):
-    robot_name = 'Talos'
-    q0 = robot.q0
-    IDX_TOOL = robot.model.getFrameId(TOOL_NAME)
-    tool_joint = model.frames[IDX_TOOL].parent
-    # indices of active joints
-    # exclude the first universe joint
-    actJoint_idx = model.supports[tool_joint].tolist()[1:]
-    # indices of joint configuration corresponding to active joints
-    Ind_joint = [model.joints[i].idx_q for i in actJoint_idx]
-
-    # NOTE: since joint 0 is universe and it is trivial,
-    # indices of joints are different from indices of joint configuration,
-    # different from indices of joint velocities
-
-    NbJoint = len(actJoint_idx)
-    x_opt_prev = np.zeros([NbJoint])
-
-    print("number of active joint: ", NbJoint)
-    print("tool name: ", TOOL_NAME)
-    print("parent joint of tool frame: ",
-          robot.model.names[tool_joint])
-    print("number of markers: ", NbMarkers)
-    print("calibration model: ", calib_model)
-    param = {
-        'robot_name': robot_name,
-        'q0': q0,
-        'x_opt_prev': x_opt_prev,
-        'NbSample': NbSample,
-        'IDX_TOOL': IDX_TOOL,
-        'tool_joint': tool_joint,
-        'eps': 1e-3,
-        'Ind_joint': Ind_joint,
-        'actJoint_idx': actJoint_idx,
-        'PLOT': 0,
-        'NbMarkers': NbMarkers,
-        'calib_model': calib_model,  # 'joint_offset' / 'full_params'
-        'calibration_index': calib_idx,  # 3 / 6
-        'NbJoint': NbJoint
-    }
-    return param
-
-
 NbSample = 50
 param = get_param(
     robot, NbSample, TOOL_NAME='gripper_left_base_link', NbMarkers=1)
-print(param)
 
 #############################################################
 
@@ -145,53 +100,13 @@ elif dataSet == 'experimental':
     q_LM = np.copy(q_exp)
     PEEm_LM = np.copy(PEEm_exp)
 
-for k in param['Ind_joint']:
-    k = int(k)
+for joint_idx in param['actJoint_idx']:
     print('to check if model modified',
-          model.names[k+1], ": ", model.jointPlacements[k].translation)
+          model.names[joint_idx], ": ", model.jointPlacements[joint_idx])
 
 print('updated number of samples: ', param['NbSample'])
 
 #############################################################
-
-# # 3'/ Data inspecting (for experimental data)
-
-# PEEm_xyz = PEEm_LM.reshape((param['NbMarkers']*3, param["NbSample"]))
-# print(PEEm_xyz.shape)
-
-# # absolute distance from mocap to markers
-# PEEm_dist = np.zeros((param['NbMarkers'], param["NbSample"]))
-# for i in range(param["NbMarkers"]):
-#     for j in range(param["NbSample"]):
-#         PEEm_dist[i, j] = np.sqrt(
-#             PEEm_xyz[i*3, j]**2 + PEEm_xyz[i*3 + 1, j]**2 + PEEm_xyz[i*3 + 2, j]**2)
-
-#     # distance between two markers
-# err_PEE = np.zeros((2, param['NbSample']))
-# for j in range(param['NbSample']):
-#     dx_bot = PEEm_xyz[0, j]-PEEm_xyz[3, j]
-#     dy_bot = PEEm_xyz[1, j]-PEEm_xyz[4, j]
-#     dz_bot = PEEm_xyz[2, j]-PEEm_xyz[5, j]
-#     err_PEE[0, j] = np.sqrt(dx_bot**2 + dy_bot**2 + dz_bot**2)
-#     dx_top = PEEm_xyz[6, j]-PEEm_xyz[9, j]
-#     dy_top = PEEm_xyz[7, j]-PEEm_xyz[10, j]
-#     dz_top = PEEm_xyz[8, j]-PEEm_xyz[11, j]
-#     err_PEE[1, j] = np.sqrt(dx_top**2 + dy_top**2 + dz_top**2)
-
-#     # plot distance between two markers
-# dist_fig, dist_axs = plt.subplots(2)
-# dist_fig.suptitle("Relative distances between markers (m) ")
-# dist_axs[0].plot(err_PEE[0, :], label="error between 2 bottom markers")
-# dist_axs[1].plot(err_PEE[1, :], label="error between 2 top markers")
-# dist_axs[0].legend()
-# dist_axs[1].legend()
-# dist_axs[0].axhline(np.mean(err_PEE[0, :]), 0,
-#                     param['NbSample'] - 1, color='r', linestyle='--')
-# dist_axs[1].axhline(np.mean(err_PEE[1, :]), 0,
-#                     param['NbSample'] - 1, color='r', linestyle='--')
-
-#############################################################
-
 
 # 4/ Given a model and configurations (input), end effector positions/locations
 # (output), solve an optimization problem to find offset params as variables
@@ -225,13 +140,12 @@ LM_solve = least_squares(cost_func, var_0,  method='lm', verbose=1,
 
 #############################################################
 
-# Result analysis
+# 5/ Result analysis
 
 # PEE estimated by solution
 PEEe_sol = get_PEE_fullvar(LM_solve.x, q_LM, model,
                            data, param)
 
-print(np.array_equal(PEEm_LM, PEEe_sol))
 # root mean square error
 rmse = np.sqrt(np.mean((PEEe_sol-PEEm_LM)**2))
 
@@ -239,39 +153,31 @@ print("solution: ", LM_solve.x)
 print("minimized cost function: ", rmse)
 print("optimality: ", LM_solve.optimality)
 
-# # estimated distance from mocap to markers
-# PEEe_xyz = PEEe_sol.reshape((param['NbMarkers']*3, param["NbSample"]))
-# PEEe_dist = np.zeros((param['NbMarkers'], param["NbSample"]))
-# for i in range(param["NbMarkers"]):
-#     for j in range(param["NbSample"]):
-#         PEEe_dist[i, j] = np.sqrt(
-#             PEEe_xyz[i*3, j]**2 + PEEe_xyz[i*3 + 1, j]**2 + PEEe_xyz[i*3 + 2, j]**2)
-
 # calculate standard deviation of estimated parameter ( Khalil chapter 11)
-sigma_ro_sq = (LM_solve.cost**2) / \
-    (param['NbSample']*param['calibration_index'] - nvars)
-J = LM_solve.jac
-C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
-std_dev = []
-std_pctg = []
-for i in range(nvars):
-    std_dev.append(np.sqrt(C_param[i, i]))
-    std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
-path_save_ep = join(
-    dirname(dirname(str(abspath(__file__)))),
-    f"data/talos/62points_estimation_result.csv")
-with open(path_save_ep, "w") as output_file:
-    w = csv.writer(output_file)
-    for i in range(nvars):
-        w.writerow(
-            [
-                params_name[i],
-                LM_solve.x[i],
-                std_dev[i],
-                std_pctg[i]
-            ]
-        )
-print("standard deviation: ", std_dev)
+# sigma_ro_sq = (LM_solve.cost**2) / \
+#     (param['NbSample']*param['calibration_index'] - nvars)
+# J = LM_solve.jac
+# C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
+# std_dev = []
+# std_pctg = []
+# for i in range(nvars):
+#     std_dev.append(np.sqrt(C_param[i, i]))
+#     std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
+# path_save_ep = join(
+#     dirname(dirname(str(abspath(__file__)))),
+#     f"data/talos/62points_estimation_result.csv")
+# with open(path_save_ep, "w") as output_file:
+#     w = csv.writer(output_file)
+#     for i in range(nvars):
+#         w.writerow(
+#             [
+#                 params_name[i],
+#                 LM_solve.x[i],
+#                 std_dev[i],
+#                 std_pctg[i]
+#             ]
+#         )
+# print("standard deviation: ", std_dev)
 
 #############################################################
 
@@ -282,15 +188,17 @@ print("standard deviation: ", std_dev)
 """
 #########################
 # test validation
-path = '/home/dvtnguyen/calibration/figaroh/data/talos/talos_feb_arm_02_07_crane.csv'
-PEEm_exp, q_exp = extract_expData4Mkr(path, param)
+# path = '/home/dvtnguyen/calibration/figaroh/data/talos/talos_feb_arm_02_07_crane.csv'
+# PEEm_exp, q_exp = extract_expData4Mkr(path, param)
 
-q_LM = np.copy(q_exp)
-PEEm_LM = np.copy(PEEm_exp)
-param['NbSample'] = q_LM.shape[0]
-PEEe_sol = get_PEE_fullvar(LM_solve.x, q_LM, model,
-                           data, param)
-###############
+# q_LM = np.copy(q_exp)
+# PEEm_LM = np.copy(PEEm_exp)
+# param['NbSample'] = q_LM.shape[0]
+# PEEe_sol = get_PEE_fullvar(LM_solve.x, q_LM, model,
+#                            data, param)
+#########################
+
+# calculate difference between estimated data and measured data
 delta_PEE = PEEe_sol - PEEm_LM
 PEE_xyz = delta_PEE.reshape((param['NbMarkers']*3, param["NbSample"]))
 PEE_dist = np.zeros((param['NbMarkers'], param["NbSample"]))
@@ -299,7 +207,7 @@ for i in range(param["NbMarkers"]):
         PEE_dist[i, j] = np.sqrt(
             PEE_xyz[i*3, j]**2 + PEE_xyz[i*3 + 1, j]**2 + PEE_xyz[i*3 + 2, j]**2)
 
-# detect "bad" data
+# detect "bad" data (outlierrs)
 del_list = []
 scatter_size = np.zeros_like(PEE_dist)
 for i in range(param['NbMarkers']):
@@ -316,11 +224,13 @@ fig1.suptitle(
     "Relative errors between estimated markers and measured markers in position (m) ")
 if param['NbMarkers'] == 1:
     ax1.bar(np.arange(param['NbSample']), PEE_dist[i, :])
+    ax1.set_xlabel('Sample')
+    ax1.set_ylabel('Error (meter)')
 else:
     for i in range(param['NbMarkers']):
         ax1[i].bar(np.arange(param['NbSample']), PEE_dist[i, :])
-ax1.set_xlabel('Sample')
-ax1.set_ylabel('Error (meter)')
+        ax1[i].set_xlabel('Sample')
+        ax1[i].set_ylabel('Error (meter)')
 
 # # 2/ plot 3D measured poses and estimated
 fig2 = plt.figure(2)

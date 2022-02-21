@@ -33,22 +33,22 @@ from tiago_mocap_calib_fun_def import (
 # print(type(df[['x1']]))
 
 robot = Robot(
-    "talos_data/robots",
-    "talos_reduced.urdf"
-    # "tiago_description/robots",
-    # "tiago_no_hand_mod.urdf",
+    # "talos_data/robots",
+    # "talos_reduced.urdf"
+    "tiago_description/robots",
+    "tiago_no_hand_mod.urdf",
     # isFext=True  # add free-flyer joint at base
 )
 model = robot.model
 data = robot.data
 # print(model)
 # 1/ model explore
-# for i in range(model.njoints):
-#     print(model.name)
-#     print(model.names[i])
-#     print(model.joints[i].id)
-#     print(model.joints[i])
-#     print(model.jointPlacements[i])
+for i in range(model.njoints):
+    print(model.name)
+    print(model.names[i])
+    print(model.joints[i].id)
+    print(model.joints[i])
+    print(model.jointPlacements[i])
 
 # 2/ test param
 # # given the tool_frame ->
@@ -63,34 +63,6 @@ data = robot.data
 # Ind_joint = [model.joints[i].idx_q for i in actJoint_idx]
 
 
-def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,  calib_model='full_params', calib_idx=3):
-    tool_FrameId = robot.model.getFrameId(TOOL_NAME)
-    parentJoint2Tool_Id = robot.model.frames[tool_FrameId].parent
-    # NbJoint = parentJoint2Tool_Id  # joint #0 is  universe
-    root_joint = 13
-    NbJoint = parentJoint2Tool_Id - root_joint + 1
-    print("number of active joint: ", NbJoint)
-    print("tool name: ", TOOL_NAME)
-    print("parent joint of tool frame: ",
-          robot.model.names[parentJoint2Tool_Id])
-    print("number of markers: ", NbMarkers)
-    print("calibration model: ", calib_model)
-    param = {
-        'q0': np.array(robot.q0),
-        'x_opt_prev': np.zeros([NbJoint]),
-        'NbSample': NbSample,
-        'IDX_TOOL': tool_FrameId,
-        'eps': 1e-3,
-        'Ind_joint': np.array(range(root_joint-1, parentJoint2Tool_Id)),
-        'PLOT': 0,
-        'NbMarkers': NbMarkers,
-        'calib_model': calib_model,  # 'joint_offset' / 'full_params'
-        'calibration_index': calib_idx,  # 3 / 6
-        'NbJoint': NbJoint
-    }
-    return param
-
-
 # 3/ test base parameters calculation
 # param = get_param(robot, 50, 'arm_left_1_link')
 # q = []
@@ -103,11 +75,11 @@ def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,  calib_
 # 4/ test extract quaternion data to rpy
 
 
-x1 = [1., 1., 1., -0.7536391, -0.0753639, -0.1507278, -0.6353185]
-x2 = [2., 2., 2., 0, 0, 0, 1]
+# x1 = [1., 1., 1., -0.7536391, -0.0753639, -0.1507278, -0.6353185]
+# x2 = [2., 2., 2., 0, 0, 0, 1]
 
-se1 = pin.XYZQUATToSE3(x1)
-se2 = pin.XYZQUATToSE3(x2)
-se12 = pin.SE3.inverse(se1)*se2
+# se1 = pin.XYZQUATToSE3(x1)
+# se2 = pin.XYZQUATToSE3(x2)
+# se12 = pin.SE3.inverse(se1)*se2
 
-print(se12.translation)
+# print(se12.translation)
