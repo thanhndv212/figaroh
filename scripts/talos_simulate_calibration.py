@@ -51,7 +51,7 @@ data = robot.data
 
 NbSample = 50
 param = get_param(
-    robot, NbSample, TOOL_NAME='gripper_left_base_link', NbMarkers=1)
+    robot, NbSample, TOOL_NAME='gripper_left_base_link', NbMarkers=2)
 
 #############################################################
 
@@ -71,7 +71,7 @@ print(params_name)
 #############################################################
 
 # 3/ Data collection/generation
-dataSet = 'experimental'  # choose data source 'sample' or 'experimental'
+dataSet = 'sample'  # choose data source 'sample' or 'experimental'
 if dataSet == 'sample':
     # create artificial offsets
     var_sample, nvars_sample = init_var(param, mode=1)
@@ -131,7 +131,7 @@ def cost_func(var, coeff, q, model, data, param, PEEm):
 
 # initial guess
 # mode = 1: random seed[-0.01, 0.01], mode = 0: init guess = 0
-var_0, nvars = init_var(param, mode=1)
+var_0, nvars = init_var(param, mode=0)
 print("initial guess: ", var_0)
 
 # solve
@@ -255,7 +255,7 @@ for i in range(param['NbMarkers']):
                   PEEm_LM2d[i*3+2, :], s=scatter_size[i, :], color='green')
 
 # 4/ joint configurations within range bound
-fig4 = plt.figure()
+fig4 = plt.figure(4)
 ax4 = fig4.add_subplot(111, projection='3d')
 lb = ub = []
 for j in param['Ind_joint']:
@@ -274,6 +274,15 @@ for i in range(len(param['actJoint_idx'])):
 ax4.set_xlabel('Angle (rad)')
 ax4.set_ylabel('Sample')
 ax4.set_zlabel('Joint')
+plt.figure(5)
+if dataSet == 'sample':
+    plt.barh(params_name, (LM_solve.x - var_sample), align='center')
+elif dataSet == 'experimental':
+    plt.barh(params_name[0:6], LM_solve.x[0:6], align='center')
+    plt.barh(params_name[6:-3*param['NbMarkers']],
+             LM_solve.x[6:-3*param['NbMarkers']], align='center')
+    plt.barh(params_name[-3*param['NbMarkers']:],
+             LM_solve.x[-3*param['NbMarkers']:], align='center')
 
 plt.show()
 

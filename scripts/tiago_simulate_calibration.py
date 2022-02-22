@@ -213,19 +213,8 @@ else:
         ax1[i].set_xlabel('Sample')
         ax1[i].set_ylabel('Error (meter)')
 
-# Estimated values of parameters
-# plt.figure(2)
-# if dataSet == 'sample':
-#     plt.barh(params_name, (LM_solve.x - var_sample), align='center')
-# elif dataSet == 'experimental':
-#     plt.barh(params_name[0:6], LM_solve.x[0:6], align='center')
-#     plt.barh(params_name[6:-3*param['NbMarkers']],
-#              LM_solve.x[6:-3*param['NbMarkers']], align='center')
-#     plt.barh(params_name[-3*param['NbMarkers']:],
-#              LM_solve.x[-3*param['NbMarkers']:], align='center')
-
 # # 2/ plot 3D measured poses and estimated
-fig2 = plt.figure(3)
+fig2 = plt.figure(2)
 ax2 = fig2.add_subplot(111, projection='3d')
 PEEm_LM2d = PEEm_LM.reshape((param['NbMarkers']*3, param["NbSample"]))
 PEEe_sol2d = PEEe_sol.reshape((param['NbMarkers']*3, param["NbSample"]))
@@ -265,6 +254,17 @@ for i in range(len(param['actJoint_idx'])):
 ax4.set_xlabel('Angle (rad)')
 ax4.set_ylabel('Sample')
 ax4.set_zlabel('Joint')
+
+
+plt.figure(5)
+if dataSet == 'sample':
+    plt.barh(params_name, (LM_solve.x - var_sample), align='center')
+elif dataSet == 'experimental':
+    plt.barh(params_name[0:6], LM_solve.x[0:6], align='center')
+    plt.barh(params_name[6:-3*param['NbMarkers']],
+             LM_solve.x[6:-3*param['NbMarkers']], align='center')
+    plt.barh(params_name[-3*param['NbMarkers']:],
+             LM_solve.x[-3*param['NbMarkers']:], align='center')
 
 plt.show()
 

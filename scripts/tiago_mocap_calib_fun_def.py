@@ -102,6 +102,8 @@ def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,
     # NOTE: since joint 0 is universe and it is trivial,
     # indices of joints are different from indices of joint configuration,
     # different from indices of joint velocities
+    
+    # TODO: check if tool_name exists in kinematic tree
 
     # robot_name: anchor as a reference point for executing
     robot_name = robot.model.name
