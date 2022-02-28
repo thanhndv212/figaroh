@@ -51,7 +51,7 @@ data = robot.data
 
 NbSample = 50
 param = get_param(
-    robot, NbSample, TOOL_NAME='gripper_left_base_link', NbMarkers=2)
+    robot, NbSample, TOOL_NAME='gripper_left_base_link', NbMarkers=1)
 
 #############################################################
 
@@ -71,7 +71,7 @@ print(params_name)
 #############################################################
 
 # 3/ Data collection/generation
-dataSet = 'sample'  # choose data source 'sample' or 'experimental'
+dataSet = 'experimental'  # choose data source 'sample' or 'experimental'
 if dataSet == 'sample':
     # create artificial offsets
     var_sample, nvars_sample = init_var(param, mode=1)
@@ -94,7 +94,10 @@ if dataSet == 'sample':
 
 elif dataSet == 'experimental':
     # read csv file output joint configs and marker positions (tiago/talos)
-    path = '/home/dvtnguyen/calibration/figaroh/data/talos/talos_feb_arm_02_10_contact.csv'
+    # path = '/home/dvtnguyen/calibration/figaroh/data/talos/talos_feb_arm_02_10_contact.csv'
+    # path = '/home/thanhndv212/Cooking/figaroh/data/talos/talos_feb_arm_02_07_crane.csv'
+    path = '/home/thanhndv212/Cooking/figaroh/data/talos/talos_feb_arm_02_10_contact.csv'
+
     PEEm_exp, q_exp = extract_expData4Mkr(path, param)
 
     q_LM = np.copy(q_exp)
@@ -165,7 +168,7 @@ print("optimality: ", LM_solve.optimality)
 #     std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
 # path_save_ep = join(
 #     dirname(dirname(str(abspath(__file__)))),
-#     f"data/talos/62points_estimation_result.csv")
+#     f"data/talos/17points_estimation_result.csv")
 # with open(path_save_ep, "w") as output_file:
 #     w = csv.writer(output_file)
 #     for i in range(nvars):
@@ -188,7 +191,9 @@ print("optimality: ", LM_solve.optimality)
 """
 #########################
 # test validation
-# path = '/home/dvtnguyen/calibration/figaroh/data/talos/talos_feb_arm_02_07_crane.csv'
+# path = '/home/dvtnguyen/calibration/figaroh/data/talos/talos_feb_arm_02_10_contact.csv'
+# path = '/home/thanhndv212/Cooking/figaroh/data/talos/talos_feb_arm_02_10_contact.csv'
+
 # PEEm_exp, q_exp = extract_expData4Mkr(path, param)
 
 # q_LM = np.copy(q_exp)

@@ -18,6 +18,7 @@ from tiago_mocap_calib_fun_def import (
     get_param,
     get_PEE_fullvar,
     get_PEE_var,
+    extract_expData4Mkr,
     get_geoOffset,
     get_jointOffset,
     get_PEE,
@@ -33,10 +34,10 @@ from tiago_mocap_calib_fun_def import (
 # print(type(df[['x1']]))
 
 robot = Robot(
-    "talos_data/robots",
-    "talos_reduced.urdf"
-    # "tiago_description/robots",
-    # "tiago_no_hand_mod.urdf",
+    # "talos_data/robots",
+    # "talos_reduced.urdf"
+    "tiago_description/robots",
+    "tiago_no_hand_mod.urdf",
     # isFext=True  # add free-flyer joint at base
 )
 model = robot.model
@@ -64,14 +65,18 @@ data = robot.data
 
 
 # 3/ test base parameters calculation
-param = get_param(robot, 50, 'torso_2_joint')
-q = []
-Rrand_b, R_b, params_base, params_e = Calculate_base_kinematics_regressor(
-    q, model, data, param)
-print("condition number: ", cond_num(R_b), cond_num(Rrand_b))
+param = get_param(robot, NbSample=2, TOOL_NAME='ee_marker_joint', NbMarkers=4)
+# q = []
+# Rrand_b, R_b, params_base, params_e = Calculate_base_kinematics_regressor(
+#     q, model, data, param)
+# print("condition number: ", cond_num(R_b), cond_num(Rrand_b))
 
-print("%d base parameters: " % len(params_base), params_base)
+# print("%d base parameters: " % len(params_base), params_base)
 
+path = '/home/thanhndv212/Cooking/figaroh/data/tiago/tiago_nov_30_64.csv'
+PEEm_exp, q_exp = extract_expData4Mkr(path, param)
+
+print(PEEm_exp.shape)
 # 4/ test extract quaternion data to rpy
 
 

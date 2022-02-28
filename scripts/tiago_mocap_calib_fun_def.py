@@ -102,7 +102,7 @@ def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,
     # NOTE: since joint 0 is universe and it is trivial,
     # indices of joints are different from indices of joint configuration,
     # different from indices of joint velocities
-    
+
     # TODO: check if tool_name exists in kinematic tree
 
     # robot_name: anchor as a reference point for executing
@@ -258,11 +258,11 @@ def extract_expData4Mkr(path_to_file, param, del_list=[]):
     # del_list = [4, 8, -3, -1] # calib_data_oct
     # del_list = [2, 26, 39]  # calib_nov_64
     # del_list = [1, 2, 4, 5, 10, 13, 19, 22,
-    #             23, 24, 28, 33, -3, -2]  # clean Nov 30
-    # del_list = [13, 28]  # no clean Nov 30
+    #             23, 24, 28, 33, -3, -2]  # clean mocap ref Nov 30
+    del_list = [9]  # clean base ref Nov 30
 
     # list of "bad" data samples of talos exp data
-    del_list = [0]
+    # del_list = [0]
     # # first 12 cols: xyz positions of 4 markers
     # xyz_4Mkr = np.delete(pd.read_csv(
     #     path_to_file, usecols=list(range(0, param['NbMarkers']*3))).to_numpy(), del_list, axis=0)
@@ -296,17 +296,17 @@ def extract_expData4Mkr(path_to_file, param, del_list=[]):
             PEE_headers.append('y%s' % str(i+1))
             PEE_headers.append('z%s' % str(i+1))
 
-    joint_headers = []
     # create headers for joint configurations
+    joint_headers = []
     if param['robot_name'] == "tiago":
         joint_headers = ['torso', 'arm1', 'arm2', 'arm3', 'arm4',
                          'arm5', 'arm6', 'arm7']
     elif param['robot_name'] == "talos":
         joint_headers = ['torso1', 'torso2', 'armL1', 'armL2', 'armL3',
                          'armL4', 'armL5', 'armL6', 'armL7']
+
     # check if all created headers present in csv file
     csv_headers = list(df.columns)
-
     for header in (PEE_headers + joint_headers):
         if header not in csv_headers:
             print("Headers for extracting data is wrongly defined!")
@@ -322,6 +322,7 @@ def extract_expData4Mkr(path_to_file, param, del_list=[]):
     if del_list:
         xyz_4Mkr = np.delete(xyz_4Mkr, del_list, axis=0)
         q_act = np.delete(q_act, del_list, axis=0)
+
     # update number of data points
     param['NbSample'] = q_act.shape[0]
 
@@ -330,7 +331,10 @@ def extract_expData4Mkr(path_to_file, param, del_list=[]):
 
     q_exp = np.empty((param['NbSample'], param['q0'].shape[0]))
     if param['robot_name'] == 'tiago':
-        pass
+        for i in range(param['NbSample']):
+            config = param['q0']
+            config[param['Ind_joint']] = q_act[i, :]
+            q_exp[i, :] = config
     elif param['robot_name'] == 'talos':
         for i in range(param['NbSample']):
             config = param['q0']
@@ -364,7 +368,12 @@ def init_var(param, mode=0, base_model=True):
     # create artificial offsets
     if mode == 0:
         # 6D base frame
-        qBase_0 = np.array([0.0, 0., 0., 0., 0., 0.])
+        # qBase_0 = np.array([0.0, 0., 0., 0., 0., 0.])
+        # tiago + mocap ref frame
+        # qBase_0 = np.array([0.5245, 0.3291, -0.02294, 0., 0., 0.])
+        # tiago + base ref frame
+        qBase_0 = np.array([0.01647, 0.22073, -0.33581, 0., 0., 0.])
+
         # parameter variation at joints
         if param['calib_model'] == 'joint_ offset':
             offset_0 = np.zeros(param['NbJoint'])
@@ -375,7 +384,13 @@ def init_var(param, mode=0, base_model=True):
 
     elif mode == 1:
         # 6D base frame
-        qBase_0 = np.array([-0.16, 0.047, 0.16, 0., 0., 0.])
+        # talos
+        if param['robot_name'] == 'talos':
+            qBase_0 = np.array([-0.16, 0.047, 0.16, 0., 0., 0.])
+        # tiago
+        elif param['robot_name'] == 'tiago':
+            qBase_0 = np.array([0.5245, 0.3291, -0.02294, 0., 0., 0.])
+
         # parameter variation at joints
         if param['calib_model'] == 'joint_ offset':
             offset_0 = np.random.uniform(-0.005, 0.005, (param['NbJoint'],))

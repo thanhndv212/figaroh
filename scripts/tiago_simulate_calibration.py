@@ -66,7 +66,7 @@ print(params_name)
 #############################################################
 
 # 3/ Data collection/generation
-dataSet = 'sample'  # choose data source 'sample' or 'experimental'
+dataSet = 'experimental'  # choose data source 'sample' or 'experimental'
 if dataSet == 'sample':
     # create artificial offsets
     var_sample, nvars_sample = init_var(param, mode=1)
@@ -90,17 +90,20 @@ if dataSet == 'sample':
 
 elif dataSet == 'experimental':
     # read csv fileT
-    path = '/home/thanhndv212/Cooking/figaroh/data/exp_data_nov_64_3011.csv'
+    path = '/home/thanhndv212/Cooking/figaroh/data/tiago/tiago_nov_30_64.csv'
+    # path = '/home/thanhndv212/Cooking/figaroh/data/tiago/exp_data_nov_64_3011.csv'
+
     PEEm_exp, q_exp = extract_expData4Mkr(path, param)
 
     q_LM = np.copy(q_exp)
     PEEm_LM = np.copy(PEEm_exp)
 
-for joint_idx in param['actJoint_idx']:
-    print('to check if model modified',
-          model.names[joint_idx], ": ", model.jointPlacements[joint_idx])
+# for joint_idx in param['actJoint_idx']:
+#     print('to check if model modified',
+#           model.names[joint_idx], ": ", model.jointPlacements[joint_idx])
 
 print('updated number of samples: ', param['NbSample'])
+
 
 #############################################################
 
@@ -127,12 +130,12 @@ def cost_func(var, coeff, q, model, data, param,  PEEm):
 
 # initial guess
 # mode = 1: random seed [-0.01, 0.01], mode = 0: init guess = 0
-var_0, nvars = init_var(param, mode=1)
+var_0, nvars = init_var(param, mode=0)
 print("initial guess: ", var_0)
 
 # solve
 LM_solve = least_squares(cost_func, var_0,  method='lm', verbose=1,
-                         args=(coeff, q_LM, model, data, param,  PEEm_LM))
+                         args=(coeff, q_LM, model, data, param, PEEm_LM))
 
 #############################################################
 
@@ -149,31 +152,31 @@ print("minimized cost function: ", rmse)
 print("optimality: ", LM_solve.optimality)
 
 print("check if get_PEE_fullvar is valid: ", np.array_equal(PEEm_LM, PEEe_sol))
-# # calculate standard deviation of estimated parameter ( Khalil chapter 11)
-# sigma_ro_sq = (LM_solve.cost**2) / \
-#     (param['NbSample']*param['calibration_index'] - nvars)
-# J = LM_solve.jac
-# C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
-# std_dev = []
-# std_pctg = []
-# for i in range(nvars):
-#     std_dev.append(np.sqrt(C_param[i, i]))
-#     std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
-# path_save_ep = join(
-#     dirname(dirname(str(abspath(__file__)))),
-#     f"data/estimation_result.csv")
-# with open(path_save_ep, "w") as output_file:
-#     w = csv.writer(output_file)
-#     for i in range(nvars):
-#         w.writerow(
-#             [
-#                 params_name[i],
-#                 LM_solve.x[i],
-#                 std_dev[i],
-#                 std_pctg[i]
-#             ]
-#         )
-# print("standard deviation: ", std_dev)
+# calculate standard deviation of estimated parameter ( Khalil chapter 11)
+sigma_ro_sq = (LM_solve.cost**2) / \
+    (param['NbSample']*param['calibration_index'] - nvars)
+J = LM_solve.jac
+C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
+std_dev = []
+std_pctg = []
+for i in range(nvars):
+    std_dev.append(np.sqrt(C_param[i, i]))
+    std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
+path_save_ep = join(
+    dirname(dirname(str(abspath(__file__)))),
+    f"data/tiago/post_estimation/estimation_result_3011_baseref.csv")
+with open(path_save_ep, "w") as output_file:
+    w = csv.writer(output_file)
+    for i in range(nvars):
+        w.writerow(
+            [
+                params_name[i],
+                LM_solve.x[i],
+                std_dev[i],
+                std_pctg[i]
+            ]
+        )
+print("standard deviation: ", std_dev)
 
 #############################################################
 
@@ -218,7 +221,6 @@ fig2 = plt.figure(2)
 ax2 = fig2.add_subplot(111, projection='3d')
 PEEm_LM2d = PEEm_LM.reshape((param['NbMarkers']*3, param["NbSample"]))
 PEEe_sol2d = PEEe_sol.reshape((param['NbMarkers']*3, param["NbSample"]))
-print(PEEm_LM2d.shape, PEEe_sol2d.shape)
 for i in range(param['NbMarkers']):
     ax2.scatter3D(PEEm_LM2d[i*3, :], PEEm_LM2d[i*3+1, :],
                   PEEm_LM2d[i*3+2, :], color='blue')
@@ -245,7 +247,6 @@ for j in param['Ind_joint']:
     ub = np.append(ub, model.upperPositionLimit[j])
 q_actJoint = q_LM[:, param['Ind_joint']]
 sample_range = np.arange(param['NbSample'])
-print(sample_range.shape)
 for i in range(len(param['actJoint_idx'])):
     ax4.scatter3D(q_actJoint[:, i], sample_range, i)
 for i in range(len(param['actJoint_idx'])):
