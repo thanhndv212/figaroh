@@ -35,7 +35,8 @@ data = robot.data
 
 NbSample = 24
 param = get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1)
-path_to_file = "/home/thanhndv212/Cooking/figaroh/data/tiago/cross_valid.csv"
+# path_to_file = "/home/thanhndv212/Cooking/figaroh/data/tiago/cross_valid.csv"
+path_to_file = "/home/dvtnguyen/calibration/figaroh/data/tiago/cross_valid.csv"
 
 xyz_4Mkr = pd.read_csv(
     path_to_file, usecols=list(range(0, param['NbMarkers']*3))).to_numpy()
@@ -123,7 +124,7 @@ offset_joint = [-0.000461829875023,
 
 var_0[6:32] = np.array(offset_joint)
 PEE = get_PEE_fullvar(var_0, q_mc, model, data, param,
-                      noise=False, base_model=True, robot_name="Tiago")
+                      noise=False, base_model=True)
 xyz_mcM = np.reshape(PEE, (3, 8))
 xyz_mcM = xyz_mcM.T
 res_mc = []
@@ -134,7 +135,7 @@ for i in range(8):
 res_mc = np.array(res_mc)
 avg = np.mean(res_mc)
 res_mc = res_mc - avg
-res_mc[0] = 0.005
+# res_mc[0] = 0.005
 
 res_zero = cal_error(q_zero, xyz_zero)
 res_pal = cal_error(q_pal, xyz_pal)

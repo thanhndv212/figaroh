@@ -61,7 +61,8 @@ PEE_names = []
 for i in range(param['NbMarkers']):
     PEE_names.extend(['pEEx_%d' % (i+1), 'pEEy_%d' % (i+1), 'pEEz_%d' % (i+1)])
 params_name = params_base + PEE_names
-print(params_name)
+for i in params_name:
+    print(i)
 
 #############################################################
 
@@ -90,7 +91,8 @@ if dataSet == 'sample':
 
 elif dataSet == 'experimental':
     # read csv fileT
-    path = '/home/thanhndv212/Cooking/figaroh/data/tiago/tiago_nov_30_64.csv'
+    path = '/home/dvtnguyen/calibration/figaroh/data/tiago/tiago_nov_30_64.csv'
+    # path = '/home/thanhndv212/Cooking/figaroh/data/tiago/tiago_nov_30_64.csv'
     # path = '/home/thanhndv212/Cooking/figaroh/data/tiago/exp_data_nov_64_3011.csv'
 
     PEEm_exp, q_exp = extract_expData4Mkr(path, param)

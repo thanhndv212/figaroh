@@ -29,7 +29,7 @@ from tools.qrdecomposition import get_baseParams, cond_num
 from tiago_simplified import (check_tiago_autocollision)
 
 from tiago_mocap_calib_fun_def import (
-    # get_param,
+    get_param,
     get_PEE_fullvar,
     get_PEE_var,
     get_geoOffset,
@@ -55,50 +55,31 @@ robot = Robot(
 model = robot.model
 data = robot.data
 print(model)
-# param = get_param(
-#     robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1)
 
-
-def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,  calib_model='full_params', calib_idx=3):
-    tool_FrameId = robot.model.getFrameId(TOOL_NAME)
-    parentJoint2Tool_Id = robot.model.frames[tool_FrameId].parent
-    # NbJoint = parentJoint2Tool_Id  # joint #0 is  universe
-    root_joint = 13
-    NbJoint = parentJoint2Tool_Id - root_joint + 1
-    print("number of active joint: ", NbJoint)
-    print("tool name: ", TOOL_NAME)
-    print("parent joint of tool frame: ",
-          robot.model.names[parentJoint2Tool_Id])
-    print("number of markers: ", NbMarkers)
-    print("calibration model: ", calib_model)
-    param = {
-        'q0': np.array(robot.q0),
-        'x_opt_prev': np.zeros([NbJoint]),
-        'NbSample': NbSample,
-        'IDX_TOOL': tool_FrameId,
-        'eps': 1e-3,
-        'Ind_joint': np.array(range(root_joint-1, parentJoint2Tool_Id)),
-        'PLOT': 0,
-        'NbMarkers': NbMarkers,
-        'calib_model': calib_model,  # 'joint_offset' / 'full_params'
-        'calibration_index': calib_idx,  # 3 / 6
-        'NbJoint': NbJoint
-    }
-    return param
-
-
-NbGrid = 3
+NbGrid = 4
 NbSample = pow(NbGrid, 3)
-
+# op_arm_joint = 'arm_right_2_joint'
+# op_value = -1.5
+# rand_joints = [model.joints[model.getJointId('arm_left_5_joint')].idx_q,
+#                model.joints[model.getJointId('arm_left_6_joint')].idx_q,
+#                model.joints[model.getJointId('arm_left_7_joint')].idx_q]
+# param = get_param(
+#     robot, NbSample, TOOL_NAME='gripper_left_base_link', NbMarkers=1)
+op_arm_joint = 'arm_left_2_joint'
+op_value = 1.5
+rand_joints = [model.joints[model.getJointId('arm_right_5_joint')].idx_q,
+               model.joints[model.getJointId('arm_right_6_joint')].idx_q,
+               model.joints[model.getJointId('arm_right_7_joint')].idx_q]
 param = get_param(
-    robot, NbSample, TOOL_NAME='gripper_left_base_link', NbMarkers=1)
+    robot, NbSample, TOOL_NAME='gripper_right_base_link', NbMarkers=1)
+
 print(param)
 IDX_TOOL = param['IDX_TOOL']
 # 2/ Generate cartesian poses
 
 cube_pose = [0.55, 0.0, 0.2]  # position of the cube
 cube_pose[len(cube_pose):] = [0, 0, 0, 1]  # orientation of the cube
-cube_dim = [0.6, 0.6, 0.6]
+cube_dim = [0.5, 0.6, 0.6]
 
 PEEd_x = np.linspace(cube_pose[0] - cube_dim[0]/2,
                      cube_pose[0] + cube_dim[0]/2, NbGrid)
@@ -106,12 +87,15 @@ PEEd_y = np.linspace(cube_pose[1] - cube_dim[1]/2,
                      cube_pose[1] + cube_dim[1]/2, NbGrid)
 PEEd_z = np.linspace(cube_pose[2] - cube_dim[2]/2,
                      cube_pose[2] + cube_dim[2]/2, NbGrid)
+
 PEEd_2d = np.empty((3, NbSample))
 for i in range(PEEd_x.shape[0]):
     for j in range(PEEd_y.shape[0]):
         for k in range(PEEd_z.shape[0]):
             idx = NbGrid*NbGrid*i + NbGrid*j + k
             PEEd_2d[:, idx] = np.array([PEEd_x[i], PEEd_y[j], PEEd_z[k]])
+
+# uniformly distributed random posture
 
 
 # 3/ Solve ipopt IK problem to generate joint configuration from given poses
@@ -132,8 +116,7 @@ for j in param['Ind_joint']:
     ub = np.append(ub, model.upperPositionLimit[j])
     x0 = np.append(
         x0, (model.lowerPositionLimit[j]+model.upperPositionLimit[j])/2)
-    print(model.names[j.item() + 1], model.lowerPositionLimit[j],
-          model.upperPositionLimit[j])
+
 
 q = []
 q_list = []
@@ -203,9 +186,16 @@ for iter in range(NbSample):
 # 2/ Base parameters calculation
 # q = []
 q = np.reshape(q, (NbSample, model.nq), order='C')
-q[:, 23] = np.full(NbSample, -1.5)
+op_arm2 = model.joints[model.getJointId(op_arm_joint)].idx_q
+q[:, op_arm2] = np.full(NbSample, op_value)
 # print(q)
 
+
+# randomize arm 5, 6, 7
+for i in range(q.shape[0]):
+    for j in rand_joints:
+        q[i, j] = np.random.uniform(
+            model.lowerPositionLimit[j], model.upperPositionLimit[j])
 Rrand_b, R_b, params_base, params_e = Calculate_base_kinematics_regressor(
     q, model, data, param)
 print("condition number: ", cond_num(R_b), cond_num(Rrand_b))
@@ -215,7 +205,31 @@ _, s2, _ = np.linalg.svd(R_b)
 print(pow(np.prod(s2), 1/38), s2)
 # print("reduced parameters: ", params_e)
 
-print("%d base parameters: " % len(params_base), params_base)
+print("%d base parameters: " % len(params_base))
+for i in params_base:
+    print(i)
+
+fig4 = plt.figure(4)
+ax4 = fig4.add_subplot(111, projection='3d')
+lb = ub = []
+for j in param['Ind_joint']:
+    # model.names does not accept index type of numpy int64
+    # and model.lowerPositionLimit index lag to model.names by 1
+    lb = np.append(lb, model.lowerPositionLimit[j])
+    ub = np.append(ub, model.upperPositionLimit[j])
+q_actJoint = q[:, param['Ind_joint']]
+sample_range = np.arange(param['NbSample'])
+print(sample_range.shape)
+for i in range(len(param['actJoint_idx'])):
+    ax4.scatter3D(q_actJoint[:, i], sample_range, i)
+for i in range(len(param['actJoint_idx'])):
+    ax4.plot([lb[i], ub[i]], [sample_range[0],
+             sample_range[0]], [i, i])
+ax4.set_xlabel('Angle (rad)')
+ax4.set_ylabel('Sample')
+ax4.set_zlabel('Joint')
+
+plt.show()
 
 
 print("You have to start 'meshcat-server' in a terminal ...")
