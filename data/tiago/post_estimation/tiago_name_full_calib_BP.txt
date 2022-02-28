@@ -1,0 +1,32 @@
+d_px_universe + 1.0*d_py_torso_lift_joint + 0.014*d_phiz_torso_lift_joint + 0.014*d_phiy_arm_1_joint
+d_py_universe - 1.0*d_px_torso_lift_joint - 0.15505*d_phiz_torso_lift_joint - 0.15505*d_phiy_arm_1_joint
+d_pz_universe + 1.0*d_pz_torso_lift_joint + 1.0*d_py_arm_1_joint
+d_phix_universe
+d_phiy_universe
+d_phiz_universe + 1.0*d_phiz_torso_lift_joint + 1.0*d_phiy_arm_1_joint
+d_phix_torso_lift_joint
+d_phiy_torso_lift_joint
+d_px_arm_1_joint + 0.0165*d_phiy_arm_1_joint
+d_pz_arm_1_joint + 0.125*d_phiy_arm_1_joint - 1.0*d_py_arm_2_joint
+d_phix_arm_1_joint
+d_phiz_arm_1_joint - 1.0*d_phiy_arm_2_joint
+d_px_arm_2_joint + 0.0895*d_phiy_arm_2_joint
+d_pz_arm_2_joint + 1.0*d_px_arm_3_joint
+d_phix_arm_2_joint
+d_phiz_arm_2_joint + 1.0*d_phix_arm_3_joint
+d_py_arm_3_joint - 0.027*d_phix_arm_3_joint
+d_pz_arm_3_joint + 0.02*d_phix_arm_3_joint + 1.0*d_px_arm_4_joint
+d_phiy_arm_3_joint
+d_phiz_arm_3_joint + 1.0*d_phix_arm_4_joint
+d_py_arm_4_joint + 0.162*d_phix_arm_4_joint
+d_pz_arm_4_joint - 0.02*d_phix_arm_4_joint + 1.0*d_px_arm_5_joint
+d_phiy_arm_4_joint
+d_phiz_arm_4_joint + 1.0*d_phix_arm_5_joint
+d_py_arm_5_joint
+d_pz_arm_5_joint + 1.0*d_py_arm_6_joint
+d_phiy_arm_5_joint
+d_phiz_arm_5_joint + 1.0*d_phiy_arm_6_joint
+d_px_arm_6_joint
+d_pz_arm_6_joint
+d_phix_arm_6_joint
+d_phiz_arm_6_joint

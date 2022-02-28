@@ -1,0 +1,44 @@
+d_px_universe + 1.0*d_py_torso_lift_joint + 0.014*d_phiz_torso_lift_joint + 0.014*d_phiy_arm_1_joint,0.52659,0.00178,0.34%
+d_py_universe - 1.0*d_px_torso_lift_joint - 0.15505*d_phiz_torso_lift_joint - 0.15505*d_phiy_arm_1_joint,0.30256,0.00119,0.39%
+d_pz_universe + 1.0*d_pz_torso_lift_joint + 1.0*d_py_arm_1_joint,-0.02547,0.00188,7.37%
+d_phix_universe,0.00853,0.00133,15.54%
+d_phiy_universe,-0.00471,0.00133,28.22%
+d_phiz_universe + 1.0*d_phiz_torso_lift_joint + 1.0*d_phiy_arm_1_joint,-0.01262,0.00186,14.72%
+d_phix_torso_lift_joint,-0.00046,0.00133,287.00%
+d_phiy_torso_lift_joint,-0.00029,0.00133,455.84%
+d_px_arm_1_joint + 0.0165*d_phiy_arm_1_joint,-0.00021,0.00133,619.58%
+d_pz_arm_1_joint + 0.125*d_phiy_arm_1_joint - 1.0*d_py_arm_2_joint,-0.00038,0.00133,347.43%
+d_phix_arm_1_joint,-0.01268,0.00012,0.95%
+d_phiz_arm_1_joint - 1.0*d_phiy_arm_2_joint,-0.00004,0.00133,3301.11%
+d_px_arm_2_joint + 0.0895*d_phiy_arm_2_joint,0.00408,0.00006,1.43%
+d_pz_arm_2_joint + 1.0*d_px_arm_3_joint,-0.00001,0.00133,15945.62%
+d_phix_arm_2_joint,-0.00102,0.00010,9.84%
+d_phiz_arm_2_joint + 1.0*d_phix_arm_3_joint,-0.04984,0.00130,2.61%
+d_py_arm_3_joint - 0.027*d_phix_arm_3_joint,0.00128,0.00007,5.67%
+d_pz_arm_3_joint + 0.02*d_phix_arm_3_joint + 1.0*d_px_arm_4_joint,-0.00088,0.00018,20.13%
+d_phiy_arm_3_joint,0.00931,0.00079,8.48%
+d_phiz_arm_3_joint + 1.0*d_phix_arm_4_joint,-0.01368,0.00013,0.93%
+d_py_arm_4_joint + 0.162*d_phix_arm_4_joint,-0.00482,0.00091,18.91%
+d_pz_arm_4_joint - 0.02*d_phix_arm_4_joint + 1.0*d_px_arm_5_joint,-0.00114,0.00004,3.89%
+d_phiy_arm_4_joint,-0.00034,0.00094,277.04%
+d_phiz_arm_4_joint + 1.0*d_phix_arm_5_joint,-0.01371,0.00076,5.58%
+d_py_arm_5_joint,-0.00195,0.00016,8.27%
+d_pz_arm_5_joint + 1.0*d_py_arm_6_joint,0.00508,0.00091,17.88%
+d_phiy_arm_5_joint,-0.15913,0.00019,0.12%
+d_phiz_arm_5_joint + 1.0*d_phiy_arm_6_joint,-0.00011,0.00094,878.97%
+d_px_arm_6_joint,0.00312,0.00003,0.87%
+d_pz_arm_6_joint,0.00583,0.00007,1.20%
+d_phix_arm_6_joint,-0.02799,0.00094,3.36%
+d_phiz_arm_6_joint,-0.02800,0.00094,3.36%
+pEEx_1,-0.00161,0.00003,1.67%
+pEEy_1,0.07163,0.00002,0.03%
+pEEz_1,0.12238,0.00007,0.06%
+pEEx_2,-0.00056,0.00002,3.36%
+pEEy_2,-0.08567,0.00002,0.03%
+pEEz_2,0.13826,0.00007,0.05%
+pEEx_3,0.00273,0.00003,1.12%
+pEEy_3,0.05348,0.00002,0.05%
+pEEz_3,0.22654,0.00007,0.03%
+pEEx_4,0.00048,0.00002,4.62%
+pEEy_4,-0.05378,0.00002,0.05%
+pEEz_4,0.23044,0.00007,0.03%
