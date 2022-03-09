@@ -182,13 +182,15 @@ def main():
     # list of instants where data samples are picked up
     # NOTE: cycle is not periodic!!!
     # sample test
-    t_pick = [207.6, 224.3, 242.5, 258.5,  295.27,
-              308.7, 326.6, 344.5, 361.5, 376.7, 365.5, 410.7,
-              428.6, 445.6, 460.8, 476.9, 496.6, 513.6, 531.5,
-              550.3, 563.7, 583.3, 601., 617.3, 631.7, 650.5, 664.8,
-              682.7, 701.5, 717.6, 737.3, 752.5, 768.6, 786.5, 802.6
-              ]
-
+    # tiago
+    # 30/11/21
+    # t_pick = [207.6, 224.3, 242.5, 258.5,  295.27,
+    #           308.7, 326.6, 344.5, 361.5, 376.7, 365.5, 410.7,
+    #           428.6, 445.6, 460.8, 476.9, 496.6, 513.6, 531.5,
+    #           550.3, 563.7, 583.3, 601., 617.3, 631.7, 650.5, 664.8,
+    #           682.7, 701.5, 717.6, 737.3, 752.5, 768.6, 786.5, 802.6
+    #           ]
+    # talos
     # 07/02/2022 air
     # t_pick = [22.4, 38.6, 56.3, 74.1, 90.6, 107., 125.7, 142.9, 158.2, 175.9, 192.4, 210.1, 226.6, 244.4,
     #           262.5, 279., 295.5, 313.5]
@@ -217,30 +219,59 @@ def main():
     #           913.14, 928.36, 945.75, 963.14,
     #           980.54, 996.84, 1014.24, 1031.63,
     #           1050.11, 1065.33, 1093.81, 1100.12]
+
+    # 04/03/22
+    t_pick = [22.9, 37.9, 53.9, 71.9,
+              89.9, 106.9, 141.8,
+              159.7, 173.7, 191.7, 210.6,
+              228.6, 244.6, 276.56,
+              296.5, 313.5, 329.5, 347.4,
+              364.4, 381.4, 398.4, 415.3,
+              435.3, 449.3, 467.2, 484.2,
+              504.2, 552.12,
+              571., 588., 605., 621.,
+              640.9, 656.9, 672.9, 689.9,
+              707.87, 723.8, 740.8, 757.8,
+              775.7, 791.7, 809.7, 825.7,
+              845.6, 861.6, 876.6, 895.5,
+              914.5, 928.5, 946.5, 965.5,
+              982.4, 997.4, 1014.4, 1031.3,
+              1048.3, 1084.3, 1099.2
+              ]
     t_pick.sort()
     print(t_pick)
 
     # extract mocap data
     # path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/tf.csv'
     # path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_1_air_2022-02-04-13-57-29/tf.csv'
-    path_to_csv = '/home/thanhndv212/Cooking/bag2csv/Calibration/Tiago/calib_Nov/calib_mocap_2021-11-30-15-44-33/tf.csv'
+    path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_right_arm_march_2022-03-04-16-52-46/tf.csv'
 
-    # frame_names = ['"waist_frame"', '"left_hand_frame"']
-    frame_names = ['"base_frame"',
-                   '"eeframe_BL"',
-                   '"eeframe_BR"',
-                   '"eeframe_TL"',
-                   '"eeframe_TR"']
+    # path_to_csv = '/home/thanhndv212/Cooking/bag2csv/Calibration/Tiago/calib_Nov/calib_mocap_2021-11-30-15-44-33/tf.csv'
+
+    ###################################### Talos 1 marker ###############
+
+    frame_names = ['"waist_frame"', '"end_effector_frame"']
     talos_dict = extract_tfbag(path_to_csv, frame_names)
-
     W_pos = talos_dict[frame_names[0]]
-    BL_pos = talos_dict[frame_names[1]]
-    BR_pos = talos_dict[frame_names[2]]
-    TL_pos = talos_dict[frame_names[3]]
-    TR_pos = talos_dict[frame_names[4]]
-
-    # update t_list take the first instant corres. base_frame data as zero
+    EE_pos = talos_dict[frame_names[1]]
     t_list = [x + W_pos[0, 0] for x in t_pick]
+
+    ###################################### Tiago 4 markers ###############
+    # frame_names = ['"base_frame"',
+    #                '"eeframe_BL"',
+    #                '"eeframe_BR"',
+    #                '"eeframe_TL"',
+    #                '"eeframe_TR"']
+    # talos_dict = extract_tfbag(path_to_csv, frame_names)
+
+    # W_pos = talos_dict[frame_names[0]]
+    # BL_pos = talos_dict[frame_names[1]]
+    # BR_pos = talos_dict[frame_names[2]]
+    # TL_pos = talos_dict[frame_names[3]]
+    # TR_pos = talos_dict[frame_names[4]]
+    # # update t_list take the first instant corres. base_frame data as zero
+    # t_list = [x + W_pos[0, 0] for x in t_pick]
+    ########################################################################
 
     def get_data_sample(pos, t_list, eps=0.01):
         """ Extracts data samples give a list of specific instants
@@ -260,11 +291,17 @@ def main():
             pos_sample[i, :] = pos[:, pos_idx[i]]
         return pos_sample
 
+    ###################################### Talos 1 marker ###############
     W_sample = get_data_sample(W_pos, t_list)
-    BL_sample = get_data_sample(BL_pos, t_list)
-    BR_sample = get_data_sample(BR_pos, t_list)
-    TL_sample = get_data_sample(TL_pos, t_list)
-    TR_sample = get_data_sample(TR_pos, t_list)
+    EE_sample = get_data_sample(EE_pos, t_list)
+
+    ###################################### Tiago 4 markers ###############
+    # W_sample = get_data_sample(W_pos, t_list)
+    # BL_sample = get_data_sample(BL_pos, t_list)
+    # BR_sample = get_data_sample(BR_pos, t_list)
+    # TL_sample = get_data_sample(TL_pos, t_list)
+    # TR_sample = get_data_sample(TR_pos, t_list)
+    ########################################################################
 
 #     # project prj_frame onto ref_frame
     def project_frame(prj_frame, ref_frame):
@@ -279,41 +316,52 @@ def main():
                 projected_pos[i, :] = projected_se3.translation
         return projected_pos
 
-    BL_prj_sample = project_frame(BL_sample, W_sample)
-    BR_prj_sample = project_frame(BR_sample, W_sample)
-    TL_prj_sample = project_frame(TL_sample, W_sample)
-    TR_prj_sample = project_frame(TR_sample, W_sample)
-    fig2 = plt.figure(2)
-    ax2 = fig2.add_subplot(111, projection='3d')
-    ax2.scatter3D(BL_sample[:, 1], BL_sample[:, 2],
-                  BL_sample[:, 3], color='blue')
-    ax2.scatter3D(BR_sample[:, 1], BR_sample[:, 2],
-                  BR_sample[:, 3], color='red')
-    ax2.scatter3D(TL_sample[:, 1], TL_sample[:, 2],
-                  TL_sample[:, 3], color='green')
-    ax2.scatter3D(TR_sample[:, 1], TR_sample[:, 2],
-                  TR_sample[:, 3], color='yellow')
-    # ax2.scatter3D(W_sample[:, 1], W_sample[:, 2],
-    #               W_sample[:, 3], color='red')
-    plt.show()
+    ###################################### Talos 1 marker ###############
+    EE_prj_sample = project_frame(EE_sample, W_sample)
+
+    ###################################### Tiago 4 markers ###############
+    # BL_prj_sample = project_frame(BL_sample, W_sample)
+    # BR_prj_sample = project_frame(BR_sample, W_sample)
+    # TL_prj_sample = project_frame(TL_sample, W_sample)
+    # TR_prj_sample = project_frame(TR_sample, W_sample)
+    # fig2 = plt.figure(2)
+    # ax2 = fig2.add_subplot(111, projection='3d')
+    # ax2.scatter3D(BL_sample[:, 1], BL_sample[:, 2],
+    #               BL_sample[:, 3], color='blue')
+    # ax2.scatter3D(BR_sample[:, 1], BR_sample[:, 2],
+    #               BR_sample[:, 3], color='red')
+    # ax2.scatter3D(TL_sample[:, 1], TL_sample[:, 2],
+    #               TL_sample[:, 3], color='green')
+    # ax2.scatter3D(TR_sample[:, 1], TR_sample[:, 2],
+    #               TR_sample[:, 3], color='yellow')
+    # plt.show()
+    ########################################################################
 
     # extract joint configurations data
     # path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_1_air_2022-02-04-13-57-29/introspection_datavalues.csv'
     # path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_1_air_2022-02-04-13-57-29/introspection_datanames.csv'
-    path_to_values = '/home/thanhndv212/Cooking/bag2csv/Calibration/Tiago/calib_Nov/calib_mocap_2021-11-30-15-44-33/introspection_datavalues.csv'
-    path_to_names = '/home/thanhndv212/Cooking/bag2csv/Calibration/Tiago/calib_Nov/calib_mocap_2021-11-30-15-44-33/introspection_datanames.csv'
+
+    path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_right_arm_march_2022-03-04-16-52-46/introspection_datavalues.csv'
+    path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_right_arm_march_2022-03-04-16-52-46/introspection_datanames.csv'
+
+    # path_to_values = '/home/thanhndv212/Cooking/bag2csv/Calibration/Tiago/calib_Nov/calib_mocap_2021-11-30-15-44-33/introspection_datavalues.csv'
+    # path_to_names = '/home/thanhndv212/Cooking/bag2csv/Calibration/Tiago/calib_Nov/calib_mocap_2021-11-30-15-44-33/introspection_datanames.csv'
 
     # joint names
+    ###################################### Tiago 4 markers ###############
     # # tiago
-    torso = '- torso_lift_joint_position'
-    arm_1 = '- arm_1_joint_position'
-    arm_2 = '- arm_2_joint_position'
-    arm_3 = '- arm_3_joint_position'
-    arm_4 = '- arm_4_joint_position'
-    arm_5 = '- arm_5_joint_position'
-    arm_6 = '- arm_6_joint_position'
-    arm_7 = '- arm_7_joint_position'
-    joint_names = [torso, arm_1, arm_2, arm_3, arm_4, arm_5, arm_6, arm_7]
+    # torso = '- torso_lift_joint_position'
+    # arm_1 = '- arm_1_joint_position'
+    # arm_2 = '- arm_2_joint_position'
+    # arm_3 = '- arm_3_joint_position'
+    # arm_4 = '- arm_4_joint_position'
+    # arm_5 = '- arm_5_joint_position'
+    # arm_6 = '- arm_6_joint_position'
+    # arm_7 = '- arm_7_joint_position'
+    # joint_names = [torso, arm_1, arm_2, arm_3, arm_4, arm_5, arm_6, arm_7]
+    #########################################################################
+
+    ###################################### Talos 1 marker ###############
     # # # talos left arm
     # torso_1 = '- torso_1_joint_position'
     # torso_2 = '- torso_2_joint_position'
@@ -328,31 +376,57 @@ def main():
     # joint_names = [torso_1, torso_2, arm_left_1, arm_left_2,
     #                arm_left_3, arm_left_4, arm_left_5, arm_left_6, arm_left_7]
 
+    # # # talos right arm
+    torso_1 = '- torso_1_joint_position'
+    torso_2 = '- torso_2_joint_position'
+    arm_right_1 = '- arm_right_1_joint_position'
+    arm_right_2 = '- arm_right_2_joint_position'
+    arm_right_3 = '- arm_right_3_joint_position'
+    arm_right_4 = '- arm_right_4_joint_position'
+    arm_right_5 = '- arm_right_5_joint_position'
+    arm_right_6 = '- arm_right_6_joint_position'
+    arm_right_7 = '- arm_right_7_joint_position'
+
+    joint_names = [torso_1, torso_2, arm_right_1, arm_right_2,
+                   arm_right_3, arm_right_4, arm_right_5, arm_right_6, arm_right_7]
+
     actJoint_val = extract_joint_pos(
         path_to_values, path_to_names, joint_names, t_list)
     print("expectedd NbSamplexNbjoints: ", actJoint_val.shape)
 
    # write to csv
-    # path_save_ep = join(
-    #     dirname(dirname(str(abspath(__file__)))),
-    #     f"talos/talos_feb_arm_02_07_crane.csv")
     path_save_ep = join(
         dirname(dirname(str(abspath(__file__)))),
-        f"tiago/tiago_nov_30_64.csv")
+        f"talos/talos_mars_right_arm_04_03_crane.csv")
     headers = [
         "x1", "y1", "z1",
-        "x2", "y2", "z2",
-        "x3", "y3", "z3",
-        "x4", "y4", "z4",
-        "torso", "arm1", "arm2", "arm3", "arm4", "arm5", "arm6", "arm7"]
+        "torso1", "torso2", "armR1", "armR2", "armR3", "armR4", "armR5", "armR6", "armR7"]
     with open(path_save_ep, "w") as output_file:
         w = csv.writer(output_file)
         w.writerow(headers)
         for i in range(len(t_list)):
-            row = list(np.concatenate((BL_prj_sample[i, :], BR_prj_sample[i, :],
-                                      TR_prj_sample[i, :], TR_prj_sample[i, :],
+            row = list(np.concatenate((EE_prj_sample[i, :],
                                       actJoint_val[i, :])))
             w.writerow(row)
+
+    ###################################### Tiago 4 markers ###############
+    # path_save_ep = join(
+    #     dirname(dirname(str(abspath(__file__)))),
+    #     f"tiago/tiago_nov_30_64.csv")
+    # headers = [
+    #     "x1", "y1", "z1",
+    #     "x2", "y2", "z2",
+    #     "x3", "y3", "z3",
+    #     "x4", "y4", "z4",
+    #     "torso", "arm1", "arm2", "arm3", "arm4", "arm5", "arm6", "arm7"]
+    # with open(path_save_ep, "w") as output_file:
+    #     w = csv.writer(output_file)
+    #     w.writerow(headers)
+    #     for i in range(len(t_list)):
+    #         row = list(np.concatenate((BL_prj_sample[i, :], BR_prj_sample[i, :],
+    #                                   TR_prj_sample[i, :], TR_prj_sample[i, :],
+    #                                   actJoint_val[i, :])))
+    #         w.writerow(row)
 
 
 if __name__ == '__main__':

@@ -51,8 +51,7 @@ data = robot.data
 
 NbSample = 50
 param = get_param(
-    robot, NbSample, TOOL_NAME='gripper_left_base_link', NbMarkers=1)
-
+    robot, NbSample, TOOL_NAME='gripper_right_base_link', NbMarkers=1)
 #############################################################
 
 # 2/ Base parameters calculation
@@ -96,7 +95,8 @@ elif dataSet == 'experimental':
     # read csv file output joint configs and marker positions (tiago/talos)
     # path = '/home/dvtnguyen/calibration/figaroh/data/talos/talos_feb_arm_02_10_contact.csv'
     # path = '/home/thanhndv212/Cooking/figaroh/data/talos/talos_feb_arm_02_07_crane.csv'
-    path = '/home/thanhndv212/Cooking/figaroh/data/talos/talos_feb_arm_02_10_contact.csv'
+    # path = '/home/thanhndv212/Cooking/figaroh/data/talos/talos_feb_arm_02_10_contact.csv'
+    path = '/home/dvtnguyen/calibration/figaroh/data/talos/talos_mars_right_arm_04_03_crane.csv'
 
     PEEm_exp, q_exp = extract_expData4Mkr(path, param)
 
@@ -157,30 +157,30 @@ print("minimized cost function: ", rmse)
 print("optimality: ", LM_solve.optimality)
 
 # calculate standard deviation of estimated parameter ( Khalil chapter 11)
-# sigma_ro_sq = (LM_solve.cost**2) / \
-#     (param['NbSample']*param['calibration_index'] - nvars)
-# J = LM_solve.jac
-# C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
-# std_dev = []
-# std_pctg = []
-# for i in range(nvars):
-#     std_dev.append(np.sqrt(C_param[i, i]))
-#     std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
-# path_save_ep = join(
-#     dirname(dirname(str(abspath(__file__)))),
-#     f"data/talos/17points_estimation_result.csv")
-# with open(path_save_ep, "w") as output_file:
-#     w = csv.writer(output_file)
-#     for i in range(nvars):
-#         w.writerow(
-#             [
-#                 params_name[i],
-#                 LM_solve.x[i],
-#                 std_dev[i],
-#                 std_pctg[i]
-#             ]
-#         )
-# print("standard deviation: ", std_dev)
+sigma_ro_sq = (LM_solve.cost**2) / \
+    (param['NbSample']*param['calibration_index'] - nvars)
+J = LM_solve.jac
+C_param = sigma_ro_sq*np.linalg.pinv(np.dot(J.T, J))
+std_dev = []
+std_pctg = []
+for i in range(nvars):
+    std_dev.append(np.sqrt(C_param[i, i]))
+    std_pctg.append(abs(np.sqrt(C_param[i, i])/LM_solve.x[i]))
+path_save_ep = join(
+    dirname(dirname(str(abspath(__file__)))),
+    f"data/talos/0403_estimation_result.csv")
+with open(path_save_ep, "w") as output_file:
+    w = csv.writer(output_file)
+    for i in range(nvars):
+        w.writerow(
+            [
+                params_name[i],
+                LM_solve.x[i],
+                std_dev[i],
+                std_pctg[i]
+            ]
+        )
+print("standard deviation: ", std_dev)
 
 #############################################################
 

@@ -194,8 +194,11 @@ q[:, op_arm2] = np.full(NbSample, op_value)
 # randomize arm 5, 6, 7
 for i in range(q.shape[0]):
     for j in rand_joints:
+        limit_range = np.abs(
+            model.upperPositionLimit[j] - model.lowerPositionLimit[j])
+        print(limit_range)
         q[i, j] = np.random.uniform(
-            model.lowerPositionLimit[j], model.upperPositionLimit[j])
+            model.lowerPositionLimit[j] + 0.05*limit_range, model.upperPositionLimit[j]-0.05*limit_range)
 Rrand_b, R_b, params_base, params_e = Calculate_base_kinematics_regressor(
     q, model, data, param)
 print("condition number: ", cond_num(R_b), cond_num(Rrand_b))
@@ -220,6 +223,7 @@ for j in param['Ind_joint']:
 q_actJoint = q[:, param['Ind_joint']]
 sample_range = np.arange(param['NbSample'])
 print(sample_range.shape)
+print(len(param['actJoint_idx']))
 for i in range(len(param['actJoint_idx'])):
     ax4.scatter3D(q_actJoint[:, i], sample_range, i)
 for i in range(len(param['actJoint_idx'])):
@@ -259,23 +263,24 @@ viz = MeshcatVisualizer(
     model=robot.model, collision_model=robot.collision_model,
     visual_model=robot.visual_model, url='classical'
 )
-time.sleep(3)
+time.sleep(1)
 for i in range(NbSample):
     viz.display(q[i, :])
     time.sleep(1)
 
 
-# text_file = join(
-#     dirname(dirname(str(abspath(__file__)))),
-#     f"data/talos/talos_full_calib_BP.txt")
-# with open(text_file, 'w') as out:
-#     for n in params_base:
-#         out.write(n + '\n')
+text_file = join(
+    dirname(dirname(str(abspath(__file__)))),
+    f"data/talos/talos_full_calib_BP.txt")
+with open(text_file, 'w') as out:
+    for n in params_base:
+        out.write(n + '\n')
 
 # save designed configs to txt file
-# dt = datetime.now()
-# current_time = dt.strftime("%d_%b_%Y_%H%M")
-# text_file = join(
-#     dirname(dirname(str(abspath(__file__)))),
-#     f"data/talos/talos_calib_exp_{current_time}.txt")
-# json.dump(q_list, open(text_file, "w"))
+dt = datetime.now()
+current_time = dt.strftime("%d_%b_%Y_%H%M")
+text_file = join(
+    dirname(dirname(str(abspath(__file__)))),
+    f"data/talos/talos_calib_right_exp_{current_time}.txt")
+json.dump(q_list, open(text_file, "w"))
+

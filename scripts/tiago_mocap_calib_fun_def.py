@@ -259,7 +259,7 @@ def extract_expData4Mkr(path_to_file, param, del_list=[]):
     # del_list = [2, 26, 39]  # calib_nov_64
     # del_list = [1, 2, 4, 5, 10, 13, 19, 22,
     #             23, 24, 28, 33, -3, -2]  # clean mocap ref Nov 30
-    del_list = [9]  # clean base ref Nov 30
+    # del_list = [9]  # clean base ref Nov 30
 
     # list of "bad" data samples of talos exp data
     # del_list = [0]
@@ -302,9 +302,13 @@ def extract_expData4Mkr(path_to_file, param, del_list=[]):
         joint_headers = ['torso', 'arm1', 'arm2', 'arm3', 'arm4',
                          'arm5', 'arm6', 'arm7']
     elif param['robot_name'] == "talos":
-        joint_headers = ['torso1', 'torso2', 'armL1', 'armL2', 'armL3',
-                         'armL4', 'armL5', 'armL6', 'armL7']
+        # left arm
+        # joint_headers = ['torso1', 'torso2', 'armL1', 'armL2', 'armL3',
+        #                  'armL4', 'armL5', 'armL6', 'armL7']
 
+        # right arm
+        joint_headers = ['torso1', 'torso2', 'armR1', 'armR2', 'armR3',
+                         'armR4', 'armR5', 'armR6', 'armR7']
     # check if all created headers present in csv file
     csv_headers = list(df.columns)
     for header in (PEE_headers + joint_headers):
