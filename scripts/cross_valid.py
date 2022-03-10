@@ -123,7 +123,7 @@ offset_joint = [-0.000461829875023,
 
 var_0[6:32] = np.array(offset_joint)
 PEE = get_PEE_fullvar(var_0, q_mc, model, data, param,
-                      noise=False, base_model=True, robot_name="Tiago")
+                      noise=False, base_model=True)
 xyz_mcM = np.reshape(PEE, (3, 8))
 xyz_mcM = xyz_mcM.T
 res_mc = []

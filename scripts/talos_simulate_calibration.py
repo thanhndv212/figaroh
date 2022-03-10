@@ -227,15 +227,20 @@ print(del_list)
 fig1, ax1 = plt.subplots(param['NbMarkers'], 1)
 fig1.suptitle(
     "Relative errors between estimated markers and measured markers in position (m) ")
+colors = ['blue',
+          'red',
+          'yellow',
+          'purple'
+          ]
 if param['NbMarkers'] == 1:
     ax1.bar(np.arange(param['NbSample']), PEE_dist[i, :])
     ax1.set_xlabel('Sample')
     ax1.set_ylabel('Error (meter)')
 else:
     for i in range(param['NbMarkers']):
-        ax1[i].bar(np.arange(param['NbSample']), PEE_dist[i, :])
+        ax1[i].bar(np.arange(param['NbSample']), PEE_dist[i, :], colors[i])
         ax1[i].set_xlabel('Sample')
-        ax1[i].set_ylabel('Error (meter)')
+        ax1[i].set_ylabel('Error of marker %s (meter)' % (i+1))
 
 # # 2/ plot 3D measured poses and estimated
 fig2 = plt.figure(2)
@@ -279,13 +284,18 @@ for i in range(len(param['actJoint_idx'])):
 ax4.set_xlabel('Angle (rad)')
 ax4.set_ylabel('Sample')
 ax4.set_zlabel('Joint')
-plt.figure(5)
+
+
 if dataSet == 'sample':
+    plt.figure(5)
     plt.barh(params_name, (LM_solve.x - var_sample), align='center')
 elif dataSet == 'experimental':
+    plt.figure(5)
     plt.barh(params_name[0:6], LM_solve.x[0:6], align='center')
+    plt.figure(6)
     plt.barh(params_name[6:-3*param['NbMarkers']],
              LM_solve.x[6:-3*param['NbMarkers']], align='center')
+    plt.figure(7)
     plt.barh(params_name[-3*param['NbMarkers']:],
              LM_solve.x[-3*param['NbMarkers']:], align='center')
 

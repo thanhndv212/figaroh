@@ -268,7 +268,7 @@ def main():
     plot_square(ax, fmin_cpts, fmin_mpts)
 
     # plot give data points
-    for i in range(4):
+    for i in range(1):
         for j in range(dp_corner[i].shape[0]):
             ax.scatter(dp_corner[i][j, 0], dp_corner[i]
                        [j, 1], dp_corner[i][j, 2])
@@ -280,7 +280,7 @@ def main():
 
 
 if __name__ == '__main__':
-    # main()
+    main()
     # path_to_csv = '/home/thanhndv212/Cooking/bag2csv/calib_Jan/rosbag/square_motion_4_zero_offsets_2022-01-12-10-55-17/tf.csv'
     # reps = 1
     # start_idx = 1050
@@ -289,78 +289,78 @@ if __name__ == '__main__':
     # reps = 1
     # start_idx = 700
 
-    path_to_csv = '/home/thanhndv212/Cooking/bag2csv/calib_Jan/rosbag/square_motion_4_mocap_offsets_2022-01-12-11-25-38/tf.csv'
-    reps = 1
-    start_idx = 700
-
-    # path_to_csv = '/home/thanhndv212/Cooking/bag2csv/calib_Jan/rosbag/square_motion_4_mocap_inv_offsets_2022-01-12-11-10-58/tf.csv'
+    # path_to_csv = '/home/thanhndv212/Cooking/bag2csv/Calibration/Tiago/calib_Jan/rosbag/square_motion_4_mocap_offsets_2022-01-12-11-25-38/tf.csv'
     # reps = 1
-    # start_idx = 500
+    # start_idx = 700
 
-    frame_name = '"endeffector_frame"'
-    dp_center, dp_corner_list, dp_mid_list, dp_C1_return = extract_setpts(start_idx, reps,
-                                                                          path_to_csv, frame_name)
+    # # path_to_csv = '/home/thanhndv212/Cooking/bag2csv/calib_Jan/rosbag/square_motion_4_mocap_inv_offsets_2022-01-12-11-10-58/tf.csv'
+    # # reps = 1
+    # # start_idx = 500
 
-    # predefined constants
-    edge = np.array([0, 0, 1])
-    w = 0.5
-    h = 0.5
+    # frame_name = '"endeffector_frame"'
+    # dp_center, dp_corner_list, dp_mid_list, dp_C1_return = extract_setpts(start_idx, reps,
+    #                                                                       path_to_csv, frame_name)
 
-    # optimization problem
-    init_guess = np.array([0.7, 0.0, 0.7, 1, 0, 0])
+    # # predefined constants
+    # edge = np.array([0, 0, 1])
+    # w = 0.5
+    # h = 0.5
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    # # optimization problem
+    # init_guess = np.array([0.7, 0.0, 0.7, 1, 0, 0])
 
-    # repeatability
-    pt_name = ['center',
-               'C1',
-               'C2',
-               'C3',
-               'C4',
-               'M1',
-               'M2',
-               'M3',
-               'M4']
-    # res_list = []
-    # res_list.append(np.linalg.norm(dp_center[0] - dp_center[1]))
-    # for i in range(len(dp_corner_list)):
-    #     res_list.append(np.linalg.norm(
-    #         dp_corner_list[i][0] - dp_corner_list[i][1]))
-    # for i in range(len(dp_mid_list)):
-    #     res_list.append(np.linalg.norm(
-    #         dp_mid_list[i][0] - dp_mid_list[i][1]))
-    # plt.bar(pt_name, res_list)
-    pt_list = [dp_center] + dp_corner_list + dp_mid_list
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
 
-    pt_array = np.empty((3, 9))
-    for i in range(9):
-        pt_array[:, i] = np.mean(pt_list[i][0], axis=0)
-    import csv
+    # # repeatability
+    # pt_name = ['center',
+    #            'C1',
+    #            'C2',
+    #            'C3',
+    #            'C4',
+    #            'M1',
+    #            'M2',
+    #            'M3',
+    #            'M4']
+    # # res_list = []
+    # # res_list.append(np.linalg.norm(dp_center[0] - dp_center[1]))
+    # # for i in range(len(dp_corner_list)):
+    # #     res_list.append(np.linalg.norm(
+    # #         dp_corner_list[i][0] - dp_corner_list[i][1]))
+    # # for i in range(len(dp_mid_list)):
+    # #     res_list.append(np.linalg.norm(
+    # #         dp_mid_list[i][0] - dp_mid_list[i][1]))
+    # # plt.bar(pt_name, res_list)
+    # pt_list = [dp_center] + dp_corner_list + dp_mid_list
 
-    path_save_ep = join(
-        dirname(dirname(str(abspath(__file__)))),
-        f"data/tiago/square_static_postures_mocap_offset.csv")
-    with open(path_save_ep, "w") as output_file:
-        w = csv.writer(output_file)
-        w.writerow(pt_name)
-        for i in range(3):
-            w.writerow(pt_array[i, :])
+    # pt_array = np.empty((3, 9))
+    # for i in range(9):
+    #     pt_array[:, i] = np.mean(pt_list[i][0], axis=0)
+    # import csv
 
-    # square fitting
+    # path_save_ep = join(
+    #     dirname(dirname(str(abspath(__file__)))),
+    #     f"data/tiago/square_static_postures_mocap_offset.csv")
+    # with open(path_save_ep, "w") as output_file:
+    #     w = csv.writer(output_file)
+    #     w.writerow(pt_name)
+    #     for i in range(3):
+    #         w.writerow(pt_array[i, :])
 
-    # for j in range(reps):
-    #     dp_corner = []
-    #     dp_mid = []
-    #     for i in range(len(dp_corner_list)):
-    #         dp_corner.append(dp_corner_list[i][j])
-    #         dp_mid.append(dp_mid_list[i][j])
-    #     plot_setpts(ax, dp_corner, dp_mid)
-    #     rslt = optimize.least_squares(cost_function, init_guess, jac='3-point',
-    #                                   args=(w, h, edge, dp_corner, dp_mid), verbose=1)
-    #     print(rslt.x)
-    #     print(rslt.cost)
-    #     LS_cpts, LS_mpts = create_square(rslt.x, w, h, edge)
-    #     plot_square(ax, LS_cpts, LS_mpts)
+    # # square fitting
 
-    # plt.show()
+    # # for j in range(reps):
+    # #     dp_corner = []
+    # #     dp_mid = []
+    # #     for i in range(len(dp_corner_list)):
+    # #         dp_corner.append(dp_corner_list[i][j])
+    # #         dp_mid.append(dp_mid_list[i][j])
+    # #     plot_setpts(ax, dp_corner, dp_mid)
+    # #     rslt = optimize.least_squares(cost_function, init_guess, jac='3-point',
+    # #                                   args=(w, h, edge, dp_corner, dp_mid), verbose=1)
+    # #     print(rslt.x)
+    # #     print(rslt.cost)
+    # #     LS_cpts, LS_mpts = create_square(rslt.x, w, h, edge)
+    # #     plot_square(ax, LS_cpts, LS_mpts)
+
+    # # plt.show()

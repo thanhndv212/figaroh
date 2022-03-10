@@ -206,15 +206,21 @@ print("indices of samples with >2 cm deviation: ", del_list)
 fig1, ax1 = plt.subplots(param['NbMarkers'], 1)
 fig1.suptitle(
     "Relative errors between estimated markers and measured markers in position (m) ")
+colors = ['blue',
+          'red',
+          'yellow',
+          'purple'
+          ]
 if param['NbMarkers'] == 1:
     ax1.bar(np.arange(param['NbSample']), PEE_dist[i, :])
     ax1.set_xlabel('Sample')
     ax1.set_ylabel('Error (meter)')
 else:
     for i in range(param['NbMarkers']):
-        ax1[i].bar(np.arange(param['NbSample']), PEE_dist[i, :])
+        ax1[i].bar(np.arange(param['NbSample']),
+                   PEE_dist[i, :], color=colors[i])
         ax1[i].set_xlabel('Sample')
-        ax1[i].set_ylabel('Error (meter)')
+        ax1[i].set_ylabel('Error of marker %s (meter)' % (i+1))
 
 # # 2/ plot 3D measured poses and estimated
 fig2 = plt.figure(2)
@@ -223,9 +229,9 @@ PEEm_LM2d = PEEm_LM.reshape((param['NbMarkers']*3, param["NbSample"]))
 PEEe_sol2d = PEEe_sol.reshape((param['NbMarkers']*3, param["NbSample"]))
 for i in range(param['NbMarkers']):
     ax2.scatter3D(PEEm_LM2d[i*3, :], PEEm_LM2d[i*3+1, :],
-                  PEEm_LM2d[i*3+2, :], color='blue')
+                  PEEm_LM2d[i*3+2, :], marker='^', color='blue')
     ax2.scatter3D(PEEe_sol2d[i*3, :], PEEe_sol2d[i*3+1, :],
-                  PEEe_sol2d[i*3+2, :], color='red')
+                  PEEe_sol2d[i*3+2, :], marker='o', color='red')
 ax2.set_xlabel('X - front (meter)')
 ax2.set_ylabel('Y - side (meter)')
 ax2.set_zlabel('Z - height (meter)')
@@ -257,15 +263,18 @@ ax4.set_ylabel('Sample')
 ax4.set_zlabel('Joint')
 
 
-plt.figure(5)
 if dataSet == 'sample':
+    plt.figure(5)
     plt.barh(params_name, (LM_solve.x - var_sample), align='center')
 elif dataSet == 'experimental':
-    plt.barh(params_name[0:6], LM_solve.x[0:6], align='center')
+    plt.figure(5)
+    plt.barh(params_name[0:6], LM_solve.x[0:6], align='center', color='blue')
+    plt.figure(6)
     plt.barh(params_name[6:-3*param['NbMarkers']],
-             LM_solve.x[6:-3*param['NbMarkers']], align='center')
+             LM_solve.x[6:-3*param['NbMarkers']], align='center', color='orange')
+    plt.figure(7)
     plt.barh(params_name[-3*param['NbMarkers']:],
-             LM_solve.x[-3*param['NbMarkers']:], align='center')
+             LM_solve.x[-3*param['NbMarkers']:], align='center', color='green')
 
 plt.show()
 

@@ -3,9 +3,10 @@ from datetime import datetime
 from numpy.core.fromnumeric import shape
 import pinocchio as pin
 from pinocchio.robot_wrapper import RobotWrapper
-from pinocchio.visualize import GepettoVisualizer, MeshcatVisualizer
+from pinocchio.visualize import GepettoVisualizer
 from pinocchio.utils import *
 # from pinocchio.pinocchio_pywrap import rpy
+from meshcat_viewer_wrapper import MeshcatVisualizer
 
 from sys import argv
 import os
@@ -59,7 +60,7 @@ from tiago_mocap_calib_fun_def import (
 
 def main():
 
-    NbGrid = 3
+    NbGrid = 4
     NbSample = pow(NbGrid, 3)
     Nq = 8  # number of joints to be optimized
 
@@ -205,22 +206,22 @@ def main():
 
     # print("reduced parameters: ", params_e)
 
-    print("%d base parameters: " % len(params_base), params_base)
-    text_file = join(
-        dirname(dirname(str(abspath(__file__)))),
-        f"data/tiago/tiago_full_calib_BP.txt")
-    with open(text_file, 'w') as out:
-        for n in params_base:
-            out.write(n + '\n')
+    # print("%d base parameters: " % len(params_base), params_base)
+    # text_file = join(
+    #     dirname(dirname(str(abspath(__file__)))),
+    #     f"data/tiago/tiago_full_calib_BP.txt")
+    # with open(text_file, 'w') as out:
+    #     for n in params_base:
+    #         out.write(n + '\n')
 
 # display few configurations
-    # viz = MeshcatVisualizer(
-    #     model=robot.model, collision_model=robot.coplision_model, visual_model=robot.visual_model, url='classical'
-    # )
-    # time.sleep(3)
-    # for i in range(20):
-    #     viz.display(q[i, :])
-    #     time.sleep(2)
+    viz = MeshcatVisualizer(
+        model=robot.model, collision_model=robot.collision_model, visual_model=robot.visual_model, url='classical'
+    )
+    time.sleep(5)
+    for i in range(48):
+        viz.display(q[i, :])
+        time.sleep(0.5)
 
 
 if __name__ == "__main__":
