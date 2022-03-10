@@ -1,0 +1,41 @@
+d_px_torso_1_joint,-0.1271,3.70662987966494E-06,0.00%
+d_py_torso_1_joint,0.0127,3.84385038930807E-06,0.03%
+d_pz_torso_1_joint + 1.0*d_pz_torso_2_joint,0.0325,5.51699759464104E-06,0.02%
+d_phix_torso_1_joint,-0.0011,9.88952321285746E-06,0.91%
+d_phiy_torso_1_joint,-0.0687,6.14796657752149E-06,0.01%
+d_phiz_torso_1_joint + 1.0*d_phiz_torso_2_joint,-0.0426,1.36958416355369E-05,0.03%
+d_px_torso_2_joint,-0.0010,8.24481611679753E-06,0.82%
+d_py_torso_2_joint + 1.0*d_py_arm_right_1_joint,-0.0082,8.34601519434516E-06,0.10%
+d_phix_torso_2_joint,-0.0020,1.32780685562033E-05,0.66%
+d_phiy_torso_2_joint + 1.0*d_phiy_arm_right_1_joint,-0.0066,1.585710816702E-05,0.24%
+d_px_arm_right_1_joint - 0.232*d_phiy_arm_right_1_joint,0.0004,8.14545132003424E-06,1.85%
+d_pz_arm_right_1_joint + 1.0*d_pz_arm_right_2_joint,-0.0048,8.48553333394776E-06,0.18%
+d_phix_arm_right_1_joint,0.0005,1.72752678733049E-05,3.63%
+d_phiz_arm_right_1_joint + 1.0*d_phiz_arm_right_2_joint,-0.0010,2.10263886337765E-05,2.15%
+d_px_arm_right_2_joint - 0.1365*d_phiz_arm_right_2_joint + 1.0*d_px_arm_right_3_joint,0.0025,1.52936900139375E-05,0.62%
+d_py_arm_right_2_joint - 0.00493*d_phiz_arm_right_2_joint,0.0026,8.48446456512886E-06,0.33%
+d_phix_arm_right_2_joint + 1.0*d_phix_arm_right_3_joint,-0.0067,2.31017356204684E-05,0.35%
+d_phiy_arm_right_2_joint,-0.0046,1.78919996613737E-05,0.39%
+d_py_arm_right_3_joint,-0.0015,1.1161672165734E-05,0.75%
+d_pz_arm_right_3_joint + 1.0*d_pz_arm_right_4_joint,-0.0045,8.79188527584222E-06,0.20%
+d_phiy_arm_right_3_joint,-0.0092,2.49483620368812E-05,0.27%
+d_phiz_arm_right_3_joint + 1.0*d_phiz_arm_right_4_joint,0.0161,3.16544277164044E-05,0.20%
+d_px_arm_right_4_joint,0.0016,1.16651802018457E-05,0.75%
+d_py_arm_right_4_joint - 0.02*d_phiz_arm_right_4_joint + 1.0*d_py_arm_right_5_joint,-0.0166,5.69798157530172E-05,0.34%
+d_phix_arm_right_4_joint,0.0007,2.09468028855594E-05,2.87%
+d_phiy_arm_right_4_joint + 1.0*d_phiy_arm_right_5_joint,0.0056,7.77115037987516E-05,1.38%
+d_px_arm_right_5_joint + 0.2643*d_phiy_arm_right_5_joint,-0.0138,5.56204813194273E-05,0.40%
+d_pz_arm_right_5_joint - 0.02*d_phiy_arm_right_5_joint + 1.0*d_pz_arm_right_6_joint,0.0020,3.88440551188908E-05,1.93%
+d_phix_arm_right_5_joint,-0.0006,7.96370759966755E-05,13.03%
+d_phiz_arm_right_5_joint + 1.0*d_phiz_arm_right_6_joint,0.0062,7.83817754364778E-05,1.26%
+d_px_arm_right_6_joint + 1.0*d_px_arm_right_7_joint,0.0071,5.52024280916866E-05,0.78%
+d_py_arm_right_6_joint,-0.0092,5.14678064056351E-05,0.56%
+d_phix_arm_right_6_joint + 1.0*d_phix_arm_right_7_joint,-0.0005,7.97128211096277E-05,15.38%
+d_phiy_arm_right_6_joint,-0.0007,7.92422176503521E-05,10.57%
+d_py_arm_right_7_joint,0.0000,8.00437522874802E-05,365.30%
+d_pz_arm_right_7_joint,0.0032,4.18374785156195E-05,1.32%
+d_phiy_arm_right_7_joint,0.0000,8.00439808967144E-05,2521.97%
+d_phiz_arm_right_7_joint,0.0033,7.86100358268679E-05,2.38%
+pEEx_1,0.0069,2.00230367043809E-05,0.29%
+pEEy_1,0.0872,8.31901444135237E-05,0.10%
+pEEz_1,-0.0694,1.92467620634552E-05,0.03%
