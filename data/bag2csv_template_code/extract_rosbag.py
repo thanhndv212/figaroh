@@ -15,9 +15,9 @@ from mpl_toolkits.mplot3d import Axes3D
 import pinocchio as pin
 
 
-def extract_tfbag(path_to_csv, frame_names):
+def extract_tfbag(path_to_tf, frame_names):
     """ Extract Qualysis data from tf bag of PAL robots,
-        Input:  path_to_csv: path to csv file
+        Input:  path_to_tf: path to csv file
                 frame_name: list of str, frame defined in Qualisys streamed and recorded in rosbag
         Output: a dictionary
                 keys: frame_names /values: [time, xyzquaternion]
@@ -25,7 +25,7 @@ def extract_tfbag(path_to_csv, frame_names):
     tf_dict = {}
 
     # create data frame
-    df = pd.read_csv(path_to_csv)
+    df = pd.read_csv(path_to_tf)
 
     # get collumns
 
@@ -135,7 +135,8 @@ def extract_joint_pos(path_to_values, path_to_names, joint_names=[], t_list=[]):
             last_idx = dt_names.columns.get_loc(last_col)
             names = list(dt_names.columns[range(first_idx+1, last_idx)])
 
-    print(len(names))
+    print("total number of columns in data_names: ", len(names))
+
     # joint_idx (list): get indices of corresponding to active joints
     joint_idx = []
     for element in joint_names:
@@ -144,7 +145,7 @@ def extract_joint_pos(path_to_values, path_to_names, joint_names=[], t_list=[]):
         else:
             print(element, "Mentioned joint is not present in the names list.")
             break
-    print(joint_idx)
+    print("Joint indices corresponding to active joints: ", joint_idx)
 
     # joint_val (np.darray): split data in "values" column (str) to numpy array
     joint_val = []
@@ -221,48 +222,99 @@ def main():
     #           1050.11, 1065.33, 1093.81, 1100.12]
 
     # 04/03/22
-    t_pick = [22.9, 37.9, 53.9, 71.9,
-              89.9, 106.9, 141.8,
-              159.7, 173.7, 191.7, 210.6,
-              228.6, 244.6, 276.56,
-              296.5, 313.5, 329.5, 347.4,
-              364.4, 381.4, 398.4, 415.3,
-              435.3, 449.3, 467.2, 484.2,
-              504.2, 552.12,
-              571., 588., 605., 621.,
-              640.9, 656.9, 672.9, 689.9,
-              707.87, 723.8, 740.8, 757.8,
-              775.7, 791.7, 809.7, 825.7,
-              845.6, 861.6, 876.6, 895.5,
-              914.5, 928.5, 946.5, 965.5,
-              982.4, 997.4, 1014.4, 1031.3,
-              1048.3, 1084.3, 1099.2
+    # t_pick = [22.9, 37.9, 53.9, 71.9,
+    #           89.9, 106.9, 141.8,
+    #           159.7, 173.7, 191.7, 210.6,
+    #           228.6, 244.6, 276.56,
+    #           296.5, 313.5, 329.5, 347.4,
+    #           364.4, 381.4, 398.4, 415.3,
+    #           435.3, 449.3, 467.2, 484.2,
+    #           504.2, 552.12,
+    #           571., 588., 605., 621.,
+    #           640.9, 656.9, 672.9, 689.9,
+    #           707.87, 723.8, 740.8, 757.8,
+    #           775.7, 791.7, 809.7, 825.7,
+    #           845.6, 861.6, 876.6, 895.5,
+    #           914.5, 928.5, 946.5, 965.5,
+    #           982.4, 997.4, 1014.4, 1031.3,
+    #           1048.3, 1084.3, 1099.2
+    #           ]
+
+    # 15/03/22
+    # left arm
+    t_pick = [29.9, 46.6, 64.47, 80.34,
+              98.2, 115.05, 131.91, 149.77,
+              166.62, 183.49, 200.35, 218.2,
+              235.06, 251.93, 268.80, 286.64,
+              302.51, 320.37, 338.22, 356.08,
+              371.95, 388.80, 405.66, 423.52,
+              440.37, 457.24, 471.13, 491.95,
+              507.83, 524.68, 541.55, 560.39,
+              577.25, 294.12, 609.99, 627.83,
+              645.70, 661.56, 679.41, 696.27,
+              713.14, 730.99, 748.85, 764.72,
+              782.56, 799.43, 816.29, 834.14,
+              851.0, 869.84, 884.73, 903.57,
+              920.44, 935.31, 954.15, 972.02,
+              985.89, 1003.75, 1020.62, 1037.47,
+              1056.31, 1089.04,
               ]
     t_pick.sort()
     print(t_pick)
 
     # extract mocap data
-    # path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/tf.csv'
-    # path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_1_air_2022-02-04-13-57-29/tf.csv'
-    path_to_csv = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_right_arm_march_2022-03-04-16-52-46/tf.csv'
+    # Talos
+    # February
+    # path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_2_contact_gripper_2022-02-04-14-42-37/tf.csv'
+    # path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_1_air_2022-02-04-13-57-29/tf.csv'
 
-    # path_to_csv = '/home/thanhndv212/Cooking/bag2csv/Calibration/Tiago/calib_Nov/calib_mocap_2021-11-30-15-44-33/tf.csv'
+    # March
+    # path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_right_arm_march_2022-03-04-16-52-46/tf.csv'
+
+    # path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_left_15_03_2022-03-15-13-54-45/tf_throttle.csv'
+
+    path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_right_15_03_2022-03-15-14-18-26/tf_throttle.csv'
+
+    # Tiago
+    # path_to_tf = '/home/thanhndv212/Cooking/bag2csv/Calibration/Tiago/calib_Nov/calib_mocap_2021-11-30-15-44-33/tf.csv'
+
+    # extract joint configurations data
+    # Talos
+    # February
+    # path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_1_air_2022-02-04-13-57-29/introspection_datavalues.csv'
+    # path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_1_air_2022-02-04-13-57-29/introspection_datanames.csv'
+
+    # March
+    # path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_right_arm_march_2022-03-04-16-52-46/introspection_datavalues.csv'
+    # path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_right_arm_march_2022-03-04-16-52-46/introspection_datanames.csv'
+
+    # path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_left_15_03_2022-03-15-13-54-45/introspection_datavalues_throttle.csv'
+    # path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_left_15_03_2022-03-15-13-54-45/introspection_datanames_throttle.csv'
+
+    path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_right_15_03_2022-03-15-14-18-26/introspection_datavalues_throttle.csv'
+    path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_right_15_03_2022-03-15-14-18-26/introspection_datanames_throttle.csv'
+    # Tiago
+    # path_to_values = '/home/thanhndv212/Cooking/bag2csv/Calibration/Tiago/calib_Nov/calib_mocap_2021-11-30-15-44-33/introspection_datavalues.csv'
+    # path_to_names = '/home/thanhndv212/Cooking/bag2csv/Calibration/Tiago/calib_Nov/calib_mocap_2021-11-30-15-44-33/introspection_datanames.csv'
 
     ###################################### Talos 1 marker ###############
 
-    frame_names = ['"waist_frame"', '"end_effector_frame"']
-    talos_dict = extract_tfbag(path_to_csv, frame_names)
+    frame_names = ['"waist_frame"', '"endeffector_frame"']
+    talos_dict = extract_tfbag(path_to_tf, frame_names)
     W_pos = talos_dict[frame_names[0]]
     EE_pos = talos_dict[frame_names[1]]
     t_list = [x + W_pos[0, 0] for x in t_pick]
-
+    print("Endeffector and waist frame read from csv: ",
+          EE_pos.shape, W_pos.shape)
+    print("length of record:", EE_pos[0, -1] -
+          EE_pos[0, 0], W_pos[0, -1] - W_pos[0, 0])
     ###################################### Tiago 4 markers ###############
     # frame_names = ['"base_frame"',
     #                '"eeframe_BL"',
     #                '"eeframe_BR"',
     #                '"eeframe_TL"',
     #                '"eeframe_TR"']
-    # talos_dict = extract_tfbag(path_to_csv, frame_names)
+    # talos_dict = extract_tfbag(path_to_tf, frame_names)
 
     # W_pos = talos_dict[frame_names[0]]
     # BL_pos = talos_dict[frame_names[1]]
@@ -273,17 +325,22 @@ def main():
     # t_list = [x + W_pos[0, 0] for x in t_pick]
     ########################################################################
 
-    def get_data_sample(pos, t_list, eps=0.01):
+    def get_data_sample(pos, t_list, eps=0.1):
         """ Extracts data samples give a list of specific instants
         """
         pos_idx = []
+        count = 0
         for t in t_list:
+            count += 1
             t_min = min(list(pos[0, :]), key=lambda x: abs(x-t))
+            print("deviation of time step: ", abs(t-t_min))
+
             if abs(t-t_min) < eps:
                 curr_idx = list(pos[0, :]).index(t_min)
                 pos_idx.append(curr_idx)
             else:
                 print("Missing data at %f" % t)
+                print(count)
                 break
 
         pos_sample = np.empty((len(pos_idx), pos.shape[0]))
@@ -294,7 +351,8 @@ def main():
     ###################################### Talos 1 marker ###############
     W_sample = get_data_sample(W_pos, t_list)
     EE_sample = get_data_sample(EE_pos, t_list)
-
+    print("Endeffector and waist frame at static postures: ",
+          EE_sample.shape, W_sample.shape)
     ###################################### Tiago 4 markers ###############
     # W_sample = get_data_sample(W_pos, t_list)
     # BL_sample = get_data_sample(BL_pos, t_list)
@@ -318,7 +376,7 @@ def main():
 
     ###################################### Talos 1 marker ###############
     EE_prj_sample = project_frame(EE_sample, W_sample)
-
+    print("projected endefffector: ", EE_prj_sample.shape)
     ###################################### Tiago 4 markers ###############
     # BL_prj_sample = project_frame(BL_sample, W_sample)
     # BR_prj_sample = project_frame(BR_sample, W_sample)
@@ -336,16 +394,6 @@ def main():
     #               TR_sample[:, 3], color='yellow')
     # plt.show()
     ########################################################################
-
-    # extract joint configurations data
-    # path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_1_air_2022-02-04-13-57-29/introspection_datavalues.csv'
-    # path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_feb/torso_arm_1_air_2022-02-04-13-57-29/introspection_datanames.csv'
-
-    path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_right_arm_march_2022-03-04-16-52-46/introspection_datavalues.csv'
-    path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_mars/calib_right_arm_march_2022-03-04-16-52-46/introspection_datanames.csv'
-
-    # path_to_values = '/home/thanhndv212/Cooking/bag2csv/Calibration/Tiago/calib_Nov/calib_mocap_2021-11-30-15-44-33/introspection_datavalues.csv'
-    # path_to_names = '/home/thanhndv212/Cooking/bag2csv/Calibration/Tiago/calib_Nov/calib_mocap_2021-11-30-15-44-33/introspection_datanames.csv'
 
     # joint names
     ###################################### Tiago 4 markers ###############
@@ -395,19 +443,28 @@ def main():
     print("expectedd NbSamplexNbjoints: ", actJoint_val.shape)
 
    # write to csv
+    # # # talos left arm
     path_save_ep = join(
         dirname(dirname(str(abspath(__file__)))),
-        f"talos/talos_mars_right_arm_04_03_crane.csv")
+        f"talos/talos_mars_left_arm_15_03_crane.csv")
     headers = [
         "x1", "y1", "z1",
-        "torso1", "torso2", "armR1", "armR2", "armR3", "armR4", "armR5", "armR6", "armR7"]
-    with open(path_save_ep, "w") as output_file:
-        w = csv.writer(output_file)
-        w.writerow(headers)
-        for i in range(len(t_list)):
-            row = list(np.concatenate((EE_prj_sample[i, :],
-                                      actJoint_val[i, :])))
-            w.writerow(row)
+        "torso1", "torso2", "armL1", "armL2", "armL3", "armL4", "armL5", "armL6", "armL7"]
+    # # # talos right arm
+    # path_save_ep = join(
+    #     dirname(dirname(str(abspath(__file__)))),
+    #     f"talos/talos_mars_right_arm_15_03_crane.csv")
+    # headers = [
+    #     "x1", "y1", "z1",
+    #     "torso1", "torso2", "armR1", "armR2", "armR3", "armR4", "armR5", "armR6", "armR7"]
+
+    # with open(path_save_ep, "w") as output_file:
+    #     w = csv.writer(output_file)
+    #     w.writerow(headers)
+    #     for i in range(len(t_list)):
+    #         row = list(np.concatenate((EE_prj_sample[i, :],
+    #                                   actJoint_val[i, :])))
+    #         w.writerow(row)
 
     ###################################### Tiago 4 markers ###############
     # path_save_ep = join(
