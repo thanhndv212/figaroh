@@ -1,0 +1,451 @@
+<?xml version="1.0"?>
+
+<robot xmlns:xacro="http://ros.org/wiki/xacro"> 
+
+  <!-- File includes -->
+  <xacro:include filename="$(find canopies_description)/urdf/arm/arm.transmission.xacro" />
+
+  <!-- Constants -->
+
+
+  <!-- Arm link macro -->
+  <xacro:macro name="arm_link" params="name num i_xyz i_rpy i_mass ixx ixy ixz iyy iyz izz v_xyz v_rpy v_mesh c_xyz c_rpy c_mesh">
+    <link name="${name}_${num}_link">
+      <inertial>
+        <origin xyz="${i_xyz}" rpy="${i_rpy}"/>
+        <mass value="${i_mass}"/>
+        <inertia ixx="${ixx}" ixy="${ixy}" ixz="${ixz}" iyy="${iyy}" iyz="${iyz}" izz="${izz}"/>
+      </inertial>
+
+      <visual>
+        <origin xyz="${v_xyz}" rpy="${v_rpy}"/>
+        <geometry>
+          <mesh filename="${v_mesh}"/>
+        </geometry>
+        <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+
+      </visual>
+
+      <collision>
+        <origin xyz="${c_xyz}" rpy="${c_rpy}"/>
+        <geometry>
+          <mesh filename="${c_mesh}"/>
+        </geometry>
+      </collision>
+    </link> 
+  </xacro:macro>
+
+  <!-- Arm joint macro -->
+  <xacro:macro name="arm_joint" params="name num type o_xyz o_rpy parent child axis lim_l lim_u lim_eff lim_vel">
+  <joint name="${name}_${num}_joint" type="${type}">
+    <origin xyz="${o_xyz}" rpy="${o_rpy}"/>
+    <parent link="${parent}" />
+    <child link="${child}" />
+    <axis xyz="${axis}" />
+    <limit lower="${lim_l}" upper="${lim_u}" effort="${lim_eff}" velocity="${lim_vel}" />
+  </joint>
+  </xacro:macro>
+
+  <!-- ARM MACRO -->
+  <!-- reflect: Set to 1 for a right arm, or to -1 for a left arm -->
+  <xacro:macro name="canopies_arm" params="name parent reflect arm_1_offset arm_2_offset arm_3_offset arm_4_offset arm_5_offset arm_6_offset arm_7_offset no_safety_eps:=False">
+    <xacro:property name="arm_eps"       value="${0.00 if no_safety_eps else 0.07}"/>
+   
+    <!--  arm 1  -->
+    <xacro:property name="num" value="1" />
+    <xacro:property name="i_rpy" value="0 0 0" /> 
+    <xacro:property name="i_mass" value="0.87697368501305" /> 
+    <xacro:property name="v_xyz" value="0 0 0" /> 
+    <xacro:property name="v_rpy" value="0 0 0" /> 
+    <xacro:property name="v_mesh" value="package://canopies_description/meshes/${name}_${num}_link.STL" /> 
+    <xacro:property name="c_xyz" value="0 0 0" /> 
+    <xacro:property name="c_rpy" value="0 0 0" /> 
+    <xacro:property name="c_mesh" value="package://canopies_description/meshes/${name}_${num}_link_convex.STL" /> 
+
+    <xacro:property name="type" value="revolute" /> 
+    <xacro:property name="lim_l" value="-1.1854" />
+    <xacro:property name="lim_u" value="1.5708" />
+    <xacro:property name="lim_eff" value="50" />
+    <xacro:property name="lim_vel" value="2" />
+
+   <xacro:if value="${name == 'arm_left'}">
+    	<xacro:property name="i_xyz" value="0.0132498641167896 -0.104643958422056 -0.0313627278802192" /> 
+    	<xacro:property name="o_xyz" value="0.181558781082121 0.203000000000049 -0.0151000000002142" /> 
+    	<xacro:property name="o_rpy" value="0 0 3.14159265358979" />
+    	<xacro:property name="ixx" value="0.00185306620323456" /> 
+    	<xacro:property name="ixy" value="8.35651442121483E-05" /> 
+    	<xacro:property name="ixz" value="2.56198592187801E-05" /> 
+    	<xacro:property name="iyy" value="0.000602091018667154" /> 
+    	<xacro:property name="iyz" value="-0.000315370201980051" /> 
+    	<xacro:property name="izz" value="0.00165640369005555" /> 
+    	<xacro:property name="axis" value="0 0 -1" />
+    </xacro:if>
+
+    <xacro:if value="${name == 'arm_right'}">
+    	<xacro:property name="i_xyz" value="0.104590177873438 -0.0135580162788852 -0.0309966654078049" /> 
+    	<xacro:property name="o_xyz" value="0.18155 -0.203 -0.0151" /> 
+    	<xacro:property name="o_rpy" value="0 0 -1.5708" />
+    	<xacro:property name="ixx" value="0.000601489961746705" /> 
+    	<xacro:property name="ixy" value="8.34336374217988E-05" /> 
+    	<xacro:property name="ixz" value="0.000317156454887187" /> 
+    	<xacro:property name="iyy" value="0.00185108820021149" /> 
+    	<xacro:property name="iyz" value="-2.48712752724217E-05" /> 
+    	<xacro:property name="izz" value="0.00165524533454654" /> 
+    	<xacro:property name="axis" value="0 0 1" />
+    </xacro:if>
+     
+    <xacro:arm_link 
+      name="${name}" num="${num}" i_xyz="${i_xyz}" i_rpy="${i_rpy}" i_mass="${i_mass}" ixx="${ixx}" ixy="${ixy}" ixz="${ixz}" iyy="${iyy}" iyz="${iyz}" izz="${izz}" v_xyz="0 0 0" v_rpy="0 0 0" v_mesh="${v_mesh}" c_xyz="${c_xyz}" c_rpy="${c_rpy}" c_mesh="${c_mesh}" />
+    
+    <xacro:arm_joint
+      name="${name}" num="${num}" type="${type}" o_xyz="${o_xyz}" o_rpy="${o_rpy}" parent="${parent}" child="${name}_${num}_link" axis="${axis}" lim_l="${lim_l}" lim_u="${lim_u}" lim_eff="${lim_eff}" lim_vel="${lim_vel}"/>
+ 
+ 
+    <!--  arm 2 --> 
+    <xacro:property name="num" value="2" />
+    <xacro:property name="i_rpy" value="0 0 0" /> 
+    <xacro:property name="i_mass" value="0.794071310033536" /> 
+    <xacro:property name="v_xyz" value="0 0 0" /> 
+    <xacro:property name="v_rpy" value="0 0 0" /> 
+    <xacro:property name="v_mesh" value="package://canopies_description/meshes/${name}_${num}_link.STL" /> 
+    <xacro:property name="c_xyz" value="0 0 0" /> 
+    <xacro:property name="c_rpy" value="0 0 0" /> 
+    <xacro:property name="c_mesh" value="package://canopies_description/meshes/${name}_${num}_link_convex.STL" /> 
+
+    <xacro:property name="type" value="revolute" /> 
+    <xacro:property name="lim_l" value="-1.5708" />
+    <xacro:property name="lim_u" value="1.5708" />
+    <xacro:property name="lim_eff" value="50" />
+    <xacro:property name="lim_vel" value="2" />
+
+   <xacro:property name="ixx" value="0.000785583237144716" /> 
+   <xacro:property name="ixy" value="-2.00520222310364E-07" /> 
+   <xacro:property name="ixz" value="-0.000281390136283333" /> 
+   <xacro:property name="iyy" value="0.00123739549319484" /> 
+   <xacro:property name="iyz" value="-9.50161622258708E-07" /> 
+   <xacro:property name="izz" value="0.00128756739473962" /> 
+
+   <xacro:if value="${name == 'arm_left'}">
+    	<xacro:property name="i_xyz" value="0.103405641765166 -8.46115248007706E-05 0.0406059744723872" /> 
+    	<xacro:property name="o_xyz" value="0.0482999996185309 -0.129999999999996 -0.0399999999999899" /> 
+    	<xacro:property name="o_rpy" value="1.5707963267949 0 -1.57079632679489" />
+        <xacro:property name="axis" value="0 0 -1" />
+    </xacro:if>
+ 
+    <xacro:if value="${name == 'arm_right'}">
+    	<xacro:property name="i_xyz" value="-0.103229215921456 -6.62803677657919E-05 0.040391671720359" /> 
+    	<xacro:property name="o_xyz" value="0.130000000000049 -0.0482999996185306 -0.0399999999998413" /> 
+    	<xacro:property name="o_rpy" value="1.5707963267949 0 3.14159265358979" />
+        <xacro:property name="axis" value="0 0 1" />
+    </xacro:if>
+     
+   <xacro:arm_link 
+      name="${name}" num="${num}" i_xyz="${i_xyz}" i_rpy="${i_rpy}" i_mass="${i_mass}" ixx="${ixx}" ixy="${ixy}" ixz="${ixz}" iyy="${iyy}" iyz="${iyz}" izz="${izz}" v_xyz="0 0 0" v_rpy="0 0 0" v_mesh="${v_mesh}" c_xyz="${c_xyz}" c_rpy="${c_rpy}" c_mesh="${c_mesh}" />
+    
+    <xacro:arm_joint
+      name="${name}" num="${num}" type="${type}" o_xyz="${o_xyz}" o_rpy="${o_rpy}" parent="${name}_${num - 1}_link" child="${name}_${num}_link" axis="${axis}" lim_l="${lim_l}" lim_u="${lim_u}" lim_eff="${lim_eff}" lim_vel="${lim_vel}"/>
+
+    <!--  arm 3  -->
+    <xacro:property name="num" value="3" />
+    <xacro:property name="i_rpy" value="0 0 0" /> 
+    <xacro:property name="i_mass" value="0.926307323067338" /> 
+    <xacro:property name="v_xyz" value="0 0 0" /> 
+    <xacro:property name="v_rpy" value="0 0 0" /> 
+    <xacro:property name="v_mesh" value="package://canopies_description/meshes/${name}_${num}_link.STL" /> 
+    <xacro:property name="c_xyz" value="0 0 0" /> 
+    <xacro:property name="c_rpy" value="0 0 0" /> 
+    <xacro:property name="c_mesh" value="package://canopies_description/meshes/${name}_${num}_link_convex.STL" /> 
+
+    <xacro:property name="type" value="revolute" /> 
+    <xacro:property name="axis" value="0 0 1" />
+    <xacro:property name="lim_l" value="-2.4435" />
+    <xacro:property name="lim_u" value="2.4435" />
+    <xacro:property name="lim_eff" value="50" />
+    <xacro:property name="lim_vel" value="2" />
+
+   <xacro:property name="ixx" value="0.00268729618779017" /> 
+   <xacro:property name="ixy" value="5.93138944713181E-06" /> 
+   <xacro:property name="ixz" value="6.98081650999533E-05" /> 
+   <xacro:property name="iyy" value="0.00226243060410489" /> 
+   <xacro:property name="iyz" value="0.000217390694394619" /> 
+   <xacro:property name="izz" value="0.000728199500066506" /> 
+
+   <xacro:if value="${name == 'arm_left'}">
+    	<xacro:property name="i_xyz" value="0.0136377329525594 0.0149533114219013 0.130010591854119" /> 
+    	<xacro:property name="o_xyz" value="0.154945006346297 0 0.0500038538537954" /> 
+    	<xacro:property name="o_rpy" value="0 1.5707963267949 0" />
+   </xacro:if>
+
+
+   <xacro:if value="${name == 'arm_right'}">
+    	<xacro:property name="i_xyz" value="0.0141106542132395 0.0147731157720475 -0.129722816418797" /> 
+    	<xacro:property name="o_xyz" value="-0.154945006346293 0 0.0500038538537946" /> 
+    	<xacro:property name="o_rpy" value="0 1.5707963267949 0" />
+   </xacro:if>
+     
+    <xacro:arm_link 
+      name="${name}" num="${num}" i_xyz="${i_xyz}" i_rpy="${i_rpy}" i_mass="${i_mass}" ixx="${ixx}" ixy="${ixy}" ixz="${ixz}" iyy="${iyy}" iyz="${iyz}" izz="${izz}" v_xyz="0 0 0" v_rpy="0 0 0" v_mesh="${v_mesh}" c_xyz="${c_xyz}" c_rpy="${c_rpy}" c_mesh="${c_mesh}" />
+    
+    <xacro:arm_joint
+      name="${name}" num="${num}" type="${type}" o_xyz="${o_xyz}" o_rpy="${o_rpy}" parent="${name}_${num - 1}_link" child="${name}_${num}_link" axis="${axis}" lim_l="${lim_l}" lim_u="${lim_u}" lim_eff="${lim_eff}" lim_vel="${lim_vel}"/>
+
+    <!--  arm 4  -->
+    <xacro:property name="num" value="4" />
+    <xacro:property name="i_rpy" value="0 0 0" /> 
+    <xacro:property name="i_mass" value="0.822927972910264" /> 
+    <xacro:property name="v_xyz" value="0 0 0" /> 
+    <xacro:property name="v_rpy" value="0 0 0" /> 
+    <xacro:property name="v_mesh" value="package://canopies_description/meshes/${name}_${num}_link.STL" /> 
+    <xacro:property name="c_xyz" value="0 0 0" /> 
+    <xacro:property name="c_rpy" value="0 0 0" /> 
+    <xacro:property name="c_mesh" value="package://canopies_description/meshes/${name}_${num}_link_convex.STL" /> 
+
+    <xacro:property name="type" value="revolute" /> 
+    <xacro:property name="lim_l" value="-1.5708" />
+    <xacro:property name="lim_u" value="2.3562" />
+    <xacro:property name="lim_eff" value="50" />
+    <xacro:property name="lim_vel" value="2" />
+
+   <xacro:property name="ixx" value="0.00134281613791152" /> 
+   <xacro:property name="ixy" value="0.000105745458533635" /> 
+   <xacro:property name="ixz" value="8.84774161322742E-05" /> 
+   <xacro:property name="iyy" value="0.000825129978916224" /> 
+   <xacro:property name="iyz" value="0.000306718405565723" /> 
+   <xacro:property name="izz" value="0.00139879333095455" /> 
+
+   <xacro:if value="${name == 'arm_left'}">
+   	<xacro:property name="i_xyz" value="0.0270943216353722 -0.0988821520517052 0.0405150394017644" /> 
+   	<xacro:property name="o_xyz" value="0.049993121155 0.0199999999949542 0.165099999970051" /> 
+   	<xacro:property name="o_rpy" value="-1.5707963267949 -0.436332316595644 1.5707963267949" />
+    	<xacro:property name="axis" value="0 0 1" />
+   </xacro:if>
+
+
+   <xacro:if value="${name == 'arm_right'}">
+   	<xacro:property name="i_xyz" value="-0.0270943216353722 -0.0988821520517052 0.0405150394017644" /> 
+   	<xacro:property name="o_xyz" value="0.049993121155 0.0199999999949542 -0.165099999970051" /> 
+   	<xacro:property name="o_rpy" value="1.5707963267949 -0.436332316595644 -1.5707963267949" />
+    	<xacro:property name="axis" value="0 0 -1" />
+   </xacro:if>
+     
+    <xacro:arm_link 
+      name="${name}" num="${num}" i_xyz="${i_xyz}" i_rpy="${i_rpy}" i_mass="${i_mass}" ixx="${ixx}" ixy="${ixy}" ixz="${ixz}" iyy="${iyy}" iyz="${iyz}" izz="${izz}" v_xyz="0 0 0" v_rpy="0 0 0" v_mesh="${v_mesh}" c_xyz="${c_xyz}" c_rpy="${c_rpy}" c_mesh="${c_mesh}" />
+    
+    <xacro:arm_joint
+      name="${name}" num="${num}" type="${type}" o_xyz="${o_xyz}" o_rpy="${o_rpy}" parent="${name}_${num - 1}_link" child="${name}_${num}_link" axis="${axis}" lim_l="${lim_l}" lim_u="${lim_u}" lim_eff="${lim_eff}" lim_vel="${lim_vel}"/>
+ 
+    <!--  arm 5 -->
+    <xacro:property name="num" value="5" />
+    <xacro:property name="i_rpy" value="0 0 0" /> 
+    <xacro:property name="i_mass" value="0.74893034334221" /> 
+    <xacro:property name="v_xyz" value="0 0 0" /> 
+    <xacro:property name="v_rpy" value="0 0 0" /> 
+    <xacro:property name="v_mesh" value="package://canopies_description/meshes/${name}_${num}_link.STL" /> 
+    <xacro:property name="c_xyz" value="0 0 0" /> 
+    <xacro:property name="c_rpy" value="0 0 0" /> 
+    <xacro:property name="c_mesh" value="package://canopies_description/meshes/${name}_${num}_link_convex.STL" /> 
+
+    <xacro:property name="type" value="revolute" /> 
+    <xacro:property name="axis" value="0 0 1" />
+    <xacro:property name="lim_l" value="-2.4435" />
+    <xacro:property name="lim_u" value="2.4435" />
+    <xacro:property name="lim_eff" value="50" />
+    <xacro:property name="lim_vel" value="2" />
+
+    <xacro:if value="${name == 'arm_left'}">
+    	<xacro:property name="i_xyz" value="0.00742954024751451 -1.40628349447613E-05 0.120207299344661" /> 
+    	<xacro:property name="o_xyz" value="0.0473796784810662 -0.148930079020028 0.0500006723402904" /> 
+    	<xacro:property name="o_rpy" value="1.13446401019926 1.5707963267949 0" />
+        <xacro:property name="ixx" value="0.00186903733130323" /> 
+        <xacro:property name="ixy" value="3.45792389611191E-08" /> 
+        <xacro:property name="ixz" value="-2.00308700454107E-05" /> 
+        <xacro:property name="iyy" value="0.00164479378146478" /> 
+        <xacro:property name="iyz" value="1.43900052018002E-07" /> 
+        <xacro:property name="izz" value="0.000476519597805165" /> 
+    </xacro:if>
+
+    <xacro:if value="${name == 'arm_right'}">
+    	<xacro:property name="i_xyz" value="4.30740072904223E-05 -0.00848243416126348 -0.122150591344461" /> 
+    	<xacro:property name="o_xyz" value="-0.0473796779453546 -0.148930079190456 0.0500006723402781" /> 
+    	<xacro:property name="o_rpy" value="1.57079632679489 0 2.70526034059123" />
+        <xacro:property name="ixx" value="0.00165448487771552" /> 
+        <xacro:property name="ixy" value="7.13153097641139E-08" /> 
+        <xacro:property name="ixz" value="5.94335178566156E-07" /> 
+        <xacro:property name="iyy" value="0.00188656983959911" /> 
+        <xacro:property name="iyz" value="-1.99881659134737E-05" /> 
+        <xacro:property name="izz" value="0.000485154620180765" /> 
+    </xacro:if>
+
+    <xacro:arm_link 
+      name="${name}" num="${num}" i_xyz="${i_xyz}" i_rpy="${i_rpy}" i_mass="${i_mass}" ixx="${ixx}" ixy="${ixy}" ixz="${ixz}" iyy="${iyy}" iyz="${iyz}" izz="${izz}" v_xyz="0 0 0" v_rpy="0 0 0" v_mesh="${v_mesh}" c_xyz="${c_xyz}" c_rpy="${c_rpy}" c_mesh="${c_mesh}" />
+    
+    <xacro:arm_joint
+      name="${name}" num="${num}" type="${type}" o_xyz="${o_xyz}" o_rpy="${o_rpy}" parent="${name}_${num - 1}_link" child="${name}_${num}_link" axis="${axis}" lim_l="${lim_l}" lim_u="${lim_u}" lim_eff="${lim_eff}" lim_vel="${lim_vel}"/>
+
+    <!--  arm 6  -->
+    <xacro:property name="num" value="6" />
+    <xacro:property name="i_rpy" value="0 0 0" /> 
+    <xacro:property name="i_mass" value="0.57449998276233" /> 
+    <xacro:property name="v_xyz" value="0 0 0" /> 
+    <xacro:property name="v_rpy" value="0 0 0" /> 
+    <xacro:property name="v_mesh" value="package://canopies_description/meshes/${name}_${num}_link.STL" /> 
+    <xacro:property name="c_xyz" value="0 0 0" /> 
+    <xacro:property name="c_rpy" value="0 0 0" /> 
+    <xacro:property name="c_mesh" value="package://canopies_description/meshes/${name}_${num}_link_convex.STL" /> 
+
+    <xacro:property name="type" value="revolute" /> 
+    <xacro:property name="axis" value="0 0 1" />
+    <xacro:property name="lim_l" value="-2.0944" />
+    <xacro:property name="lim_u" value="2.0944" />
+    <xacro:property name="lim_eff" value="50" />
+    <xacro:property name="lim_vel" value="2" />
+     
+    <xacro:if value="${name == 'arm_left'}">
+    	<xacro:property name="i_xyz" value="-0.097397015740831 -7.60509099821949E-05 0.0319703400106361" /> 
+    	<xacro:property name="o_xyz" value="0.0394965876541543 0 0.165050003051757" /> 
+    	<xacro:property name="o_rpy" value="3.14159265358979 1.5707963267949 0" />
+        <xacro:property name="ixx" value="0.000336830706145902" /> 
+        <xacro:property name="ixy" value="2.54868794954536E-07" /> 
+        <xacro:property name="ixz" value="0.000130149113719221" /> 
+        <xacro:property name="iyy" value="0.000640156728274183" /> 
+        <xacro:property name="iyz" value="-1.91674636838617E-07" /> 
+        <xacro:property name="izz" value="0.00066560829053429" /> 
+    	<xacro:property name="axis" value="0 0 1" />
+    </xacro:if>
+
+    <xacro:if value="${name == 'arm_right'}">
+    	<xacro:property name="i_xyz" value="2.67981412671592E-05 -0.0996444474227959 0.0324891780507251" /> 
+    	<xacro:property name="o_xyz" value="0 -0.0394965876541469 -0.165050003051757" /> 
+    	<xacro:property name="o_rpy" value="1.57079225562289 0 3.14159265358979" />
+        <xacro:property name="ixx" value="0.000649724152900116" /> 
+        <xacro:property name="ixy" value="-2.88560094495301E-07" /> 
+        <xacro:property name="ixz" value="7.26158980543349E-07" /> 
+        <xacro:property name="iyy" value="0.000354317686660206" /> 
+        <xacro:property name="iyz" value="0.000130103098393712" /> 
+        <xacro:property name="izz" value="0.000674307517909216" /> 
+    	<xacro:property name="axis" value="0 0 -1" />
+    </xacro:if>
+
+    <xacro:arm_link 
+      name="${name}" num="${num}" i_xyz="${i_xyz}" i_rpy="${i_rpy}" i_mass="${i_mass}" ixx="${ixx}" ixy="${ixy}" ixz="${ixz}" iyy="${iyy}" iyz="${iyz}" izz="${izz}" v_xyz="0 0 0" v_rpy="0 0 0" v_mesh="${v_mesh}" c_xyz="${c_xyz}" c_rpy="${c_rpy}" c_mesh="${c_mesh}" />
+    
+    <xacro:arm_joint
+      name="${name}" num="${num}" type="${type}" o_xyz="${o_xyz}" o_rpy="${o_rpy}" parent="${name}_${num - 1}_link" child="${name}_${num}_link" axis="${axis}" lim_l="${lim_l}" lim_u="${lim_u}" lim_eff="${lim_eff}" lim_vel="${lim_vel}"/>
+ 
+    <!--  arm 7  -->
+    <xacro:property name="num" value="7" />
+    <xacro:property name="i_rpy" value="0 0 0" /> 
+    <xacro:property name="i_mass" value="0.046454195059981" /> 
+    <xacro:property name="v_xyz" value="0 0 0" /> 
+    <xacro:property name="v_rpy" value="0 0 0" /> 
+    <xacro:property name="v_mesh" value="package://canopies_description/meshes/${name}_${num}_link.STL" /> 
+    <xacro:property name="c_xyz" value="0 0 0" /> 
+    <xacro:property name="c_rpy" value="0 0 0" /> 
+    <xacro:property name="c_mesh" value="package://canopies_description/meshes/${name}_${num}_link_convex.STL" /> 
+
+    <xacro:property name="type" value="revolute" /> 
+    <xacro:property name="lim_l" value="-2.4435" />
+    <xacro:property name="lim_u" value="2.4435" />
+    <xacro:property name="lim_eff" value="50" />
+    <xacro:property name="lim_vel" value="2" />
+     
+   <xacro:property name="ixx" value="1.50415963925835E-05" /> 
+   <xacro:property name="ixy" value="1.85363213140515E-15" /> 
+   <xacro:property name="ixz" value="1.20426857766972E-14" /> 
+   <xacro:property name="iyy" value="1.50415963980474E-05" /> 
+   <xacro:property name="iyz" value="-2.32028280159053E-14" /> 
+   <xacro:property name="izz" value="1.40885078822543E-05" /> 
+
+    <xacro:if value="${name == 'arm_left'}">
+    	<xacro:property name="i_xyz" value="7.21433329742283E-12 -1.40316647190275E-11 -0.00771079747828263" /> 
+    	<xacro:property name="o_xyz" value="-0.146000003967285 0 0.0390021466447858" /> 
+    	<xacro:property name="o_rpy" value="3.14159265358979 1.5707963267949 0" />
+    	<xacro:property name="axis" value="0 0 -1" />
+    </xacro:if>
+
+    <xacro:if value="${name == 'arm_right'}">
+    	<xacro:property name="i_xyz" value="8.56652769554156E-12 1.39648292929451E-11 0.00740178372048539" /> 
+    	<xacro:property name="o_xyz" value="0 -0.146000162750523 0.0390015522533293" /> 
+    	<xacro:property name="o_rpy" value="0 1.57079225564058 1.57079632319904" />
+    	<xacro:property name="axis" value="0 0 1" />
+    </xacro:if>
+
+    <xacro:arm_link 
+      name="${name}" num="${num}" i_xyz="${i_xyz}" i_rpy="${i_rpy}" i_mass="${i_mass}" ixx="${ixx}" ixy="${ixy}" ixz="${ixz}" iyy="${iyy}" iyz="${iyz}" izz="${izz}" v_xyz="0 0 0" v_rpy="0 0 0" v_mesh="${v_mesh}" c_xyz="${c_xyz}" c_rpy="${c_rpy}" c_mesh="${c_mesh}" />
+    
+    <xacro:arm_joint
+      name="${name}" num="${num}" type="${type}" o_xyz="${o_xyz}" o_rpy="${o_rpy}" parent="${name}_${num - 1}_link" child="${name}_${num}_link" axis="${axis}" lim_l="${lim_l}" lim_u="${lim_u}" lim_eff="${lim_eff}" lim_vel="${lim_vel}"/>
+ 
+    <!-- Gazebo tags --> 
+    <gazebo reference="${name}_1_link">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+    <gazebo reference="${name}_2_link">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+    <gazebo reference="${name}_3_link">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+    <gazebo reference="${name}_4_link">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+    <gazebo reference="${name}_5_link">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+    <gazebo reference="${name}_6_link">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+    <gazebo reference="${name}_7_link">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+
+    <gazebo reference="${name}_1_joint">
+       <implicitSpringDamper>1</implicitSpringDamper>
+    </gazebo>
+    <gazebo reference="${name}_2_joint">
+       <implicitSpringDamper>1</implicitSpringDamper>
+    </gazebo>
+    <gazebo reference="${name}_3_joint">
+       <implicitSpringDamper>1</implicitSpringDamper>
+    </gazebo>
+    <gazebo reference="${name}_4_joint">
+       <implicitSpringDamper>1</implicitSpringDamper>
+    </gazebo>
+    <gazebo reference="${name}_5_joint">
+       <implicitSpringDamper>1</implicitSpringDamper>
+    </gazebo>
+    <gazebo reference="${name}_6_joint">
+       <implicitSpringDamper>1</implicitSpringDamper>
+    </gazebo>
+    <gazebo reference="${name}_7_joint">
+       <implicitSpringDamper>1</implicitSpringDamper>
+    </gazebo>
+
+     <xacro:arm_simple_transmission name="${name}" number="1" reduction="1.0" offset_value="${arm_1_offset}"/>
+     <xacro:arm_simple_transmission name="${name}" number="2" reduction="1.0" offset_value="${arm_2_offset}"/>
+     <xacro:arm_simple_transmission name="${name}" number="3" reduction="1.0" offset_value="${arm_3_offset}"/>
+     <xacro:arm_simple_transmission name="${name}" number="4" reduction="1.0" offset_value="${arm_4_offset}"/>
+     <xacro:arm_simple_transmission name="${name}" number="5" reduction="1.0" offset_value="${arm_5_offset}"/>
+     <xacro:arm_simple_transmission name="${name}" number="6" reduction="1.0" offset_value="${arm_6_offset}"/>
+     <xacro:arm_simple_transmission name="${name}" number="7" reduction="1.0" offset_value="${arm_7_offset}"/>
+ 
+  </xacro:macro>
+</robot>

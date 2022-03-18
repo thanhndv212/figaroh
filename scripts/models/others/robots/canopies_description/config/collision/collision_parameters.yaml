@@ -1,0 +1,11 @@
+collision_model_parameters:
+  padding: 0
+  links_with_padding: []
+  blacklist:
+    default:
+      - first: arm_left_2_link
+        second: torso_lift_link
+      - first: arm_right_2_link
+        second: torso_lift_link
+      - first: ground_plane
+        second: base_link

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>canopies_description</name>
+  <version>0.0.2</version>
+  <description>The canopies_description package</description>
+
+  <maintainer email="narcis.miguel@pal-robotics.com">Narcis Miguel</maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <exec_depend>xacro</exec_depend>
+
+</package>

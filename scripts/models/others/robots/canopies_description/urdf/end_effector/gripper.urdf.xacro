@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+
+ <xacro:include filename="$(find canopies_description)/urdf/end_effector/bracelet_position.xacro" />
+
+ <xacro:macro name="canopies_end_effector" params="parent side reflect">
+   
+   <!-- arm tool link rotation -->	 
+   <xacro:property name="arm_tool_link_rpy" value="0 0 0"/>
+   <xacro:if value="${side == 'right'}">
+     <xacro:property name="arm_tool_link_rpy" value="0 3.1415 0"/>
+   </xacro:if> 
+
+   <!-- bracelet and camera position -->
+   <xacro:if value="${side == 'right'}">
+     <xacro:property name="bracelet_position" value="${bracelet_right_joint_position}"/>
+     <xacro:property name="sliding_camera_position" value="${sliding_camera_right_joint_position}"/>
+   </xacro:if>
+   <xacro:if value="${side == 'left'}">
+     <xacro:property name="bracelet_position" value="${bracelet_left_joint_position}"/>
+     <xacro:property name="sliding_camera_position" value="${sliding_camera_left_joint_position}"/>
+   </xacro:if>
+
+  
+   <link name="arm_${side}_tool_link">
+     <inertial>
+       <origin
+         xyz="-8.72341378871547E-19 -3.58071519193086E-19 -0.000498095397312673"
+         rpy="0 0 0" />
+       <mass
+         value="0.0964963909707827" />
+       <inertia
+         ixx="4.75283927695453E-05"
+         ixy="-4.85304603562874E-21"
+         ixz="-5.2745766155842E-21"
+         iyy="4.76693659585906E-05"
+         iyz="-1.93116940087902E-24"
+         izz="9.11591201541302E-05" />
+     </inertial>
+     <visual>
+       <origin
+         xyz="0 0 0"
+         rpy="0 0 0" />
+       <geometry>
+         <mesh
+           filename="package://canopies_description/meshes/arm_tool_link.STL" />
+       </geometry>
+       <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+       </material>
+     </visual>
+     <collision>
+       <origin
+         xyz="0 0 0"
+         rpy="0 0 0" />
+       <geometry>
+         <mesh
+           filename="package://canopies_description/meshes/arm_tool_link_convex.STL" />
+       </geometry>
+     </collision>
+   </link>
+
+   <joint name="arm_${side}_tool_joint" type="fixed">
+     <origin xyz="0 0 ${reflect * 0.001}" rpy="${arm_tool_link_rpy}" />
+     <parent link="${parent}" />
+     <child link="arm_${side}_tool_link" />
+   </joint>
+  
+   <link name="canopies_${side}_gripper_link">
+     <inertial>
+       <origin
+         xyz="-0.000300653205482236 0.00559209970336067 -0.0155778936944353"
+         rpy="0 0 0" />
+       <mass
+         value="0.921383155345529" />
+       <inertia
+         ixx="0.000349596651423129"
+         ixy="4.30833962089385E-07"
+         ixz="-2.41976792957629E-06"
+         iyy="0.000442213479683061"
+         iyz="-8.53296406565065E-06"
+         izz="0.000421213881731075" />
+     </inertial>
+     <visual>
+       <origin
+         xyz="0 0 0"
+         rpy="0 0 0" />
+       <geometry>
+         <mesh
+           filename="package://canopies_description/meshes/gripper.STL" />
+       </geometry>
+       <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+       </material>
+     </visual>
+     <collision>
+       <origin
+         xyz="0 0 0"
+         rpy="0 0 0" />
+       <geometry>
+         <mesh
+           filename="package://canopies_description/meshes/gripper_convex.STL" />
+       </geometry>
+     </collision>
+   </link>
+ 
+   <joint name="canopies_${side}_gripper_joint" type="fixed">
+     <origin xyz="0 0 0.07685" rpy="0 0 0" />
+     <parent link="arm_${side}_tool_link" />
+     <child link="canopies_${side}_gripper_link" />
+   </joint>
+
+   <!-- Camera and its relative position to the gripper -->
+   <link name="bracelet_${side}_link">
+    <inertial>
+      <origin
+        xyz="5.25295183328777E-09 0.0452520767384337 0.025579051418433"
+        rpy="0 0 0" />
+      <mass
+        value="0.0075785605921069" />
+      <inertia
+        ixx="1.12980403073069E-06"
+        ixy="3.37598355955052E-14"
+        ixz="5.6375696315875E-13"
+        iyy="1.11831949845808E-06"
+        iyz="1.28270410320809E-07"
+        izz="3.27808336339241E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://canopies_description/meshes/bracelet_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://canopies_description/meshes/bracelet_link_convex.STL" />
+      </geometry>
+    </collision>
+   </link>
+
+   <joint
+    name="bracelet_${side}_joint"
+    type="fixed">
+    <origin
+      xyz="0 0 -0.07885"
+      rpy="0 0 ${ 0.0 + bracelet_position}" />
+    <parent link="canopies_${side}_gripper_link" />
+    <child link="bracelet_${side}_link" />
+    </joint>
+
+   <link
+      name="sliding_camera_${side}_link">
+    <inertial>
+      <origin
+        xyz="0.00214510101613394 0.000895650026583305 0.0102877331474634"
+        rpy="0 0 0" />
+      <mass
+        value="0.045942703958924" />
+      <inertia
+        ixx="2.49330078505231E-05"
+        ixy="9.43998542256713E-08"
+        ixz="9.3926537239295E-07"
+        iyy="8.19626949652857E-06"
+        iyz="-9.45103591650873E-09"
+        izz="2.88263143775324E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://canopies_description/meshes/sliding_camera_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://canopies_description/meshes/sliding_camera_link_convex.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="sliding_camera_${side}_joint"
+    type="fixed">
+    <origin
+      xyz="0 0.073441 ${-0.027808 + sliding_camera_position}"
+      rpy="0 -1.309 -1.5708" />
+    <parent link="bracelet_${side}_link" />
+    <child link="sliding_camera_${side}_link" />
+  </joint>
+
+
+  </xacro:macro>
+</robot>

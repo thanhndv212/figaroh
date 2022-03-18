@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:property name="bracelet_left_joint_position"  value="0.0" />
+  <xacro:property name="bracelet_right_joint_position" value="0.0" />
+  <xacro:property name="sliding_camera_left_joint_position"  value="0.0" />
+  <xacro:property name="sliding_camera_right_joint_position" value="0.0" />
+</robot>
