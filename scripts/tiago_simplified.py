@@ -127,6 +127,57 @@ def build_tiago_simplified(robot):
           len(geom_model.collisionPairs))
 
 
+def build_canopies_simplified(robot):
+    visual_model = robot.visual_model
+    geom_model = robot.geom_model
+
+    xyz_0 = np.array([0., 0., 0.0])
+    xyz_1 = np.array([0., 0., 0.5])
+    xyz_6 = np.array([0., 0., -0.1])
+
+    base_ID = robot.model.getJointId("universe")
+    hand_ID = robot.model.getJointId("arm_right_7_joint")
+
+    geom_model.addGeometryObject(
+        Box("torso_box", base_ID, 0.35, 0.40, 1, pin.SE3(np.eye(3), xyz_1))
+    )
+    visual_model.addGeometryObject(
+        Box("torso_box", base_ID, 0.35, 0.40, 1, pin.SE3(np.eye(3), xyz_1))
+    )
+    geom_model.addGeometryObject(
+        Box("ground_plane", base_ID, 2.5, 2.5, 0.1, pin.SE3(np.eye(3), xyz_0))
+    )
+    visual_model.addGeometryObject(
+        Box("ground_plane", base_ID, 2.5, 2.5, 0.1, pin.SE3(np.eye(3), xyz_0))
+    )
+    geom_model.addGeometryObject(
+        Capsule("hand_cap", hand_ID, 0.05, 0.2, pin.SE3(np.eye(3), xyz_6))
+    )
+    visual_model.addGeometryObject(
+        Capsule("hand_cap", hand_ID, 0.05, 0.2, pin.SE3(np.eye(3), xyz_6))
+    )
+    arm_link_names = [
+        "arm_right_3_link_0",
+        "arm_right_4_link_0",
+        "arm_right_5_link_0",
+        "arm_right_6_link_0",
+        # "wrist_ft_link_0",
+        # "wrist_ft_tool_link_0",
+        "hand_cap"
+    ]
+    arm_link_ids = [geom_model.getGeometryId(k) for k in arm_link_names]
+    mask_link_names = [
+        "torso_box",
+        "ground_plane"
+    ]
+    mask_link_ids = [geom_model.getGeometryId(k) for k in mask_link_names]
+    for i in mask_link_ids:
+        for j in arm_link_ids:
+            geom_model.addCollisionPair(pin.CollisionPair(i, j))
+    print("number of collision pairs of simplified model is: ",
+          len(geom_model.collisionPairs))
+
+
 def build_tiago_normal(robot, srdf_dr, srdf_file):
     # # Remove collision pairs listed in the SRDF file
     pinocchio_model_dir = join(dirname(str(abspath(__file__))), "models")
@@ -145,16 +196,19 @@ def build_tiago_normal(robot, srdf_dr, srdf_file):
     geom_data = pin.GeometryData(geom_model)
 
 
-def check_tiago_autocollision(robot, q, srdf_dr, srdf_file):
-    # build_tiago_simplified(robot)
-    build_tiago_normal(robot, srdf_dr, srdf_file)
+def check_tiago_autocollision(robot, q, srdf_dr='', srdf_file=''):
+    build_canopies_simplified(robot)
+    # build_tiago_normal(robot, srdf_dr, srdf_file)
     collision = CollisionWrapper(robot, viz=None)
+    collided_idx = []
     for i in range(q.shape[0]):
         is_collision = collision.computeCollisions(q[i, :])
         if not is_collision:
-            print("self-collision is not violated!")
+            print("config %s self-collision is not violated!" % i)
         else:
-            print("self-collision is violated!")
+            print("config %s self-collision is violated!" % i)
+            collided_idx.append(i)
+    return collided_idx
 
 
 def main():

@@ -839,15 +839,16 @@ def Calculate_base_kinematics_regressor(q, model, data, param):
 
     R_b = build_baseRegressor(R_e, idx_base)
 
-    if param['PLOT'] == 1:
-        # plotting
-        plot1 = plt.figure()
-        axs = plot1.subplots(6, 1)
-        ylabel = ["px", "py", "pz", "phix", "phiy", "phiz"]
-        for j in range(6):
-            axs[j].plot(R[param['NbSample']*j:param['NbSample']
-                        * j+param['NbSample'], 17])
-            axs[j].set_ylabel(ylabel[j])
+    # deprecated
+    # if param['PLOT'] == 1:
+    #     # plotting
+    #     plot1 = plt.figure()
+    #     axs = plot1.subplots(6, 1)
+    #     ylabel = ["px", "py", "pz", "phix", "phiy", "phiz"]
+    #     for j in range(6):
+    #         axs[j].plot(R[param['NbSample']*j:param['NbSample']
+    #                     * j+param['NbSample'], 17])
+    #         axs[j].set_ylabel(ylabel[j])
         # plt.show()
     _, s, _ = np.linalg.svd(Rrand_b)
     print('shape of observation matrix',

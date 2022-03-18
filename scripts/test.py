@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import time
 
 import pinocchio as pin
 from pinocchio.robot_wrapper import RobotWrapper
@@ -13,6 +14,7 @@ from os.path import dirname, join, abspath
 from tools.robot import Robot
 from tools.regressor import eliminate_non_dynaffect
 from tools.qrdecomposition import get_baseParams, cond_num
+from meshcat_viewer_wrapper import MeshcatVisualizer
 
 from tiago_mocap_calib_fun_def import (
     get_param,
@@ -34,25 +36,34 @@ from tiago_mocap_calib_fun_def import (
 # print(type(df[['x1']]))
 
 robot = Robot(
-    "talos_data/robots",
-    "talos_reduced.urdf"
+    # "talos_data/robots",
+    # "talos_reduced.urdf"
     # "tiago_description/robots",
     # "tiago_no_hand_mod.urdf",
+    "canopies_description/robots",
+    "canopies_arm.urdf"
     # isFext=True  # add free-flyer joint at base
 )
 model = robot.model
 data = robot.data
 # print(model)
 # 1/ model explore
-# for i in range(model.njoints):
-#     print(model.name)
-#     print(model.names[i])
-#     print(model.joints[i].id)
-#     print(model.joints[i])
-#     print(model.jointPlacements[i])
-joint_id = model.getJointId('arm_right_1_joint')
-print(dir(model.joints[joint_id]))
-print(model.joints[joint_id].id, model.joints[joint_id].idx_q)
+for i in range(model.njoints):
+    print(model.name)
+    print(model.names[i])
+    print(model.joints[i].id)
+    print(model.joints[i])
+    print(model.jointPlacements[i])
+for i, frame in enumerate(model.frames):
+    print(frame)
+viz = MeshcatVisualizer(
+    model=robot.model, collision_model=robot.collision_model,
+    visual_model=robot.visual_model, url='classical'
+)
+for i in range(20):
+    q = pin.randomConfiguration(robot.model)
+    viz.display(robot.q0)
+    time.sleep(1)
 # 2/ test param
 # # given the tool_frame ->
 # # find parent joint (tool_joint) ->
