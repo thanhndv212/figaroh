@@ -63,20 +63,28 @@ param = get_param(
 # 3/ Solve ipopt IK problem to generate joint configuration from given poses
 
 # 2/ Base parameters calculation
-q_rand = np.empty((NbSample, robot.model.nq))
+q_samp = np.empty((NbSample, robot.model.nq))
 for i in range(NbSample):
-    q_rand[i, :] = pin.randomConfiguration(robot.model)
+    q_samp[i, :] = pin.randomConfiguration(robot.model)
 
-# abnormal setup
+# invert q2
 joint_abm = 'arm_right_2_joint'
 joint_abm_idx = model.joints[model.getJointId(joint_abm)].idx_q
-q_rand[:, joint_abm_idx] = -1 * q_rand[:, joint_abm_idx]
+# q_inv = np.copy(q_samp)
+# q_inv[:, joint_abm_idx] = 1 * q_samp[:, joint_abm_idx]
 
-collided_idx = check_tiago_autocollision(robot, q_rand)
-q = np.delete(q_rand, collided_idx, 0)
+# remove collided configs in real robot
+collided_idx = check_tiago_autocollision(robot, q_samp)
+q_deduct = np.delete(q_samp, collided_idx, 0)
+
+# remove collided configs in planner
+q_deduct_inv = np.copy(q_deduct)
+q_deduct_inv[:, joint_abm_idx] = -1 * q_deduct[:, joint_abm_idx]
+collided_idx = check_tiago_autocollision(robot, q_deduct_inv)
+q = np.delete(q_deduct_inv, collided_idx, 0)
 
 param['NbSample'] = q.shape[0]
-
+print(param['NbSample'])
 
 Rrand_b, R_b, params_base, params_e = Calculate_base_kinematics_regressor(
     q, model, data, param)
@@ -91,36 +99,38 @@ print("%d base parameters: " % len(params_base))
 for i in params_base:
     print(i)
 
-fig4 = plt.figure(4)
-ax4 = fig4.add_subplot(111, projection='3d')
-lb = ub = []
-for j in param['Ind_joint']:
-    # model.names does not accept index type of numpy int64
-    # and model.lowerPositionLimit index lag to model.names by 1
-    lb = np.append(lb, model.lowerPositionLimit[j])
-    ub = np.append(ub, model.upperPositionLimit[j])
+# fig4 = plt.figure(4)
+# ax4 = fig4.add_subplot(111, projection='3d')
+# lb = ub = []
+# for j in param['Ind_joint']:
+#     # model.names does not accept index type of numpy int64
+#     # and model.lowerPositionLimit index lag to model.names by 1
+#     lb = np.append(lb, model.lowerPositionLimit[j])
+#     ub = np.append(ub, model.upperPositionLimit[j])
 
-q_actJoint = q[:, param['Ind_joint']]
-sample_range = np.arange(param['NbSample'])
+# q_actJoint = q[:, param['Ind_joint']]
+# sample_range = np.arange(param['NbSample'])
 
-print(sample_range.shape)
-print(len(param['actJoint_idx']))
+# print(sample_range.shape)
+# print(len(param['actJoint_idx']))
 
-for i in range(len(param['actJoint_idx'])):
-    ax4.scatter3D(q_actJoint[:, i], sample_range, i)
-for i in range(len(param['actJoint_idx'])):
-    ax4.plot([lb[i], ub[i]], [sample_range[0],
-             sample_range[0]], [i, i])
+# for i in range(len(param['actJoint_idx'])):
+#     ax4.scatter3D(q_actJoint[:, i], sample_range, i)
+# for i in range(len(param['actJoint_idx'])):
+#     ax4.plot([lb[i], ub[i]], [sample_range[0],
+#              sample_range[0]], [i, i])
 
-ax4.set_xlabel('Angle (rad)')
-ax4.set_ylabel('Sample')
-ax4.set_zlabel('Joint')
+# ax4.set_xlabel('Angle (rad)')
+# ax4.set_ylabel('Sample')
+# ax4.set_zlabel('Joint')
 
 # plt.show()
 
 
 print("You have to start 'meshcat-server' in a terminal ...")
 time.sleep(3)
+q_display = np.copy(q)
+q_display[:, joint_abm_idx] = -1 * q[:, joint_abm_idx]
 
 # display few configurations
 viz = MeshcatVisualizer(
@@ -128,25 +138,26 @@ viz = MeshcatVisualizer(
     visual_model=robot.visual_model, url='classical'
 )
 time.sleep(1)
-# for i in range(param['NbSample']):
-#     viz.display(q[i, :])
-#     time.sleep(1)
-q[0, joint_abm_idx] = -1.57
-viz.display(q[0, :])
-time.sleep(10)
+for i in range(param['NbSample']):
+    viz.display(q_display[i, :])
+    time.sleep(1)
+
 
 # write generated configs to text file
+# q_deduct = np.copy(q_deduct_inv)
+# q_deduct[:, joint_abm_idx] = -1 * q_deduct_inv[:, joint_abm_idx]
+q_write = np.around(q[:, param['Ind_joint']], 4).tolist()
+print(q_samp[:, joint_abm_idx], q[:, joint_abm_idx])
 
-# text_file = join(
-#     dirname(dirname(str(abspath(__file__)))),
-#     f"data/canopies/canopies_full_calib_BP.txt")
-# with open(text_file, 'w') as out:
-#     for n in params_base:
-#         out.write(n + '\n')
-# q_write = np.around(q[:, param['Ind_joint']], 4).tolist()
-# dt = datetime.now()
-# current_time = dt.strftime("%d_%b_%Y_%H%M")
-# text_file = join(
-#     dirname(dirname(str(abspath(__file__)))),
-#     f"data/canopies/canopies_calib_right_arm_{current_time}.txt")
-# json.dump(q_write, open(text_file, "w"))
+text_file = join(
+    dirname(dirname(str(abspath(__file__)))),
+    f"data/canopies/canopies_full_calib_BP.txt")
+with open(text_file, 'w') as out:
+    for n in params_base:
+        out.write(n + '\n')
+dt = datetime.now()
+current_time = dt.strftime("%d_%b_%Y_%H%M")
+text_file = join(
+    dirname(dirname(str(abspath(__file__)))),
+    f"data/canopies/canopies_calib_right_arm_{current_time}.txt")
+json.dump(q_write, open(text_file, "w"))
