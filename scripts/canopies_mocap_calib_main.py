@@ -68,8 +68,8 @@ for i in range(NbSample):
     q_samp[i, :] = pin.randomConfiguration(robot.model)
 
 # invert q2
-joint_abm = 'arm_right_2_joint'
-joint_abm_idx = model.joints[model.getJointId(joint_abm)].idx_q
+# joint_abm = 'arm_right_2_joint'
+# joint_abm_idx = model.joints[model.getJointId(joint_abm)].idx_q
 # q_inv = np.copy(q_samp)
 # q_inv[:, joint_abm_idx] = 1 * q_samp[:, joint_abm_idx]
 
@@ -78,10 +78,12 @@ collided_idx = check_tiago_autocollision(robot, q_samp)
 q_deduct = np.delete(q_samp, collided_idx, 0)
 
 # remove collided configs in planner
-q_deduct_inv = np.copy(q_deduct)
-q_deduct_inv[:, joint_abm_idx] = -1 * q_deduct[:, joint_abm_idx]
-collided_idx = check_tiago_autocollision(robot, q_deduct_inv)
-q = np.delete(q_deduct_inv, collided_idx, 0)
+# q_deduct_inv = np.copy(q_deduct)
+# q_deduct_inv[:, joint_abm_idx] = -1 * q_deduct[:, joint_abm_idx]
+# collided_idx = check_tiago_autocollision(robot, q_deduct_inv)
+# q = np.delete(q_deduct_inv, collided_idx, 0)
+
+q = q_deduct
 
 param['NbSample'] = q.shape[0]
 print(param['NbSample'])
@@ -130,7 +132,7 @@ for i in params_base:
 print("You have to start 'meshcat-server' in a terminal ...")
 time.sleep(3)
 q_display = np.copy(q)
-q_display[:, joint_abm_idx] = -1 * q[:, joint_abm_idx]
+# q_display[:, joint_abm_idx] = -1 * q[:, joint_abm_idx]
 
 # display few configurations
 viz = MeshcatVisualizer(
@@ -147,7 +149,7 @@ for i in range(param['NbSample']):
 # q_deduct = np.copy(q_deduct_inv)
 # q_deduct[:, joint_abm_idx] = -1 * q_deduct_inv[:, joint_abm_idx]
 q_write = np.around(q[:, param['Ind_joint']], 4).tolist()
-print(q_samp[:, joint_abm_idx], q[:, joint_abm_idx])
+# print(q_samp[:, joint_abm_idx], q[:, joint_abm_idx])
 
 text_file = join(
     dirname(dirname(str(abspath(__file__)))),
