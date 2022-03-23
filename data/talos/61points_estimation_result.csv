@@ -1,0 +1,42 @@
+BASE PARAMETER,VALUE,STANDARD DEV,PERCENTAGE_DEV
+d_px_torso_1_joint,-0.127255,1.35E-06,0.00%
+d_py_torso_1_joint,0.007645,1.45E-06,0.02%
+d_pz_torso_1_joint + 1.0*d_pz_torso_2_joint,0.031922,1.84E-06,0.01%
+d_phix_torso_1_joint,-0.012975,3.42E-06,0.03%
+d_phiy_torso_1_joint,-0.064409,2.23E-06,0.00%
+d_phiz_torso_1_joint + 1.0*d_phiz_torso_2_joint,-0.048267,5.14E-06,0.01%
+d_px_torso_2_joint,-0.000440,2.90E-06,0.66%
+d_py_torso_2_joint + 1.0*d_py_arm_left_1_joint,0.001022,2.79E-06,0.27%
+d_phix_torso_2_joint,0.006391,4.26E-06,0.07%
+d_phiy_torso_2_joint + 1.0*d_phiy_arm_left_1_joint,-0.004180,5.45E-06,0.13%
+d_px_arm_left_1_joint - 0.232*d_phiy_arm_left_1_joint,0.000073,2.97E-06,4.08%
+d_pz_arm_left_1_joint + 1.0*d_pz_arm_left_2_joint,0.000852,2.69E-06,0.32%
+d_phix_arm_left_1_joint,0.007325,6.09E-06,0.08%
+d_phiz_arm_left_1_joint + 1.0*d_phiz_arm_left_2_joint,0.028524,7.33E-06,0.03%
+d_px_arm_left_2_joint + 0.1365*d_phiz_arm_left_2_joint + 1.0*d_px_arm_left_3_joint,-0.002976,4.76E-06,0.16%
+d_py_arm_left_2_joint - 0.00493*d_phiz_arm_left_2_joint,0.002012,2.83E-06,0.14%
+d_phix_arm_left_2_joint + 1.0*d_phix_arm_left_3_joint,0.011924,7.26E-06,0.06%
+d_phiy_arm_left_2_joint,0.008346,7.08E-06,0.08%
+d_py_arm_left_3_joint,-0.005562,3.23E-06,0.06%
+d_pz_arm_left_3_joint + 1.0*d_pz_arm_left_4_joint,-0.009003,2.75E-06,0.03%
+d_phiy_arm_left_3_joint,-0.017616,7.82E-06,0.04%
+d_phiz_arm_left_3_joint + 1.0*d_phiz_arm_left_4_joint,-0.011451,1.01E-05,0.09%
+d_px_arm_left_4_joint,-0.000153,3.82E-06,2.49%
+d_py_arm_left_4_joint - 0.02*d_phiz_arm_left_4_joint + 1.0*d_py_arm_left_5_joint,0.014231,2.01E-05,0.14%
+d_phix_arm_left_4_joint,-0.000501,7.31E-06,1.46%
+d_phiy_arm_left_4_joint + 1.0*d_phiy_arm_left_5_joint,0.002647,2.79E-05,1.06%
+d_px_arm_left_5_joint + 0.2643*d_phiy_arm_left_5_joint,-0.002721,1.95E-05,0.72%
+d_pz_arm_left_5_joint - 0.02*d_phiy_arm_left_5_joint + 1.0*d_pz_arm_left_6_joint,0.001628,1.39E-05,0.85%
+d_phix_arm_left_5_joint,-0.003694,2.74E-05,0.74%
+d_phiz_arm_left_5_joint + 1.0*d_phiz_arm_left_6_joint,-0.001396,2.75E-05,1.97%
+d_px_arm_left_6_joint + 1.0*d_px_arm_left_7_joint,0.012265,1.90E-05,0.15%
+d_py_arm_left_6_joint,0.010735,1.83E-05,0.17%
+d_phix_arm_left_6_joint + 1.0*d_phix_arm_left_7_joint,-0.001548,2.74E-05,1.77%
+d_phiy_arm_left_6_joint,0.000485,2.86E-05,5.89%
+d_py_arm_left_7_joint,0.000005,2.86E-05,579.04%
+d_pz_arm_left_7_joint,-0.000531,1.42E-05,2.67%
+d_phiy_arm_left_7_joint,0.000153,2.86E-05,18.68%
+d_phiz_arm_left_7_joint,0.000326,2.77E-05,8.50%
+pEEx_1,0.053911,5.75E-06,0.01%
+pEEy_1,-0.011466,2.97E-05,0.26%
+pEEz_1,-0.074107,5.60E-06,0.01%
