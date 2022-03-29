@@ -15,20 +15,38 @@ from mpl_toolkits.mplot3d import Axes3D
 import pinocchio as pin
 
 
-def extract_tfbag(path_to_tf, frame_names):
+def extract_t_list(path_to_tf):
+    """ Extracts list of timestampts where samples were recorded
+        """
+    pass
+
+
+def test_readCSV(path_to_values, path_to_names):
+    # read names and values from csv to dataframe
+    dt_names = pd.read_csv(path_to_names)
+    dt_values = pd.read_csv(path_to_values)
+
+    dt_values_val = dt_values.loc[:, 'values'].values
+
+    test_msg = dt_values_val[1]
+    first_row = test_msg.replace('[', '')
+    first_row = first_row.replace(']', '')
+    split_data = first_row.split(',')
+
+
+def extract_tf(path_to_tf, frame_names):
     """ Extract Qualysis data from tf bag of PAL robots,
         Input:  path_to_tf: path to csv file
                 frame_name: list of str, frame defined in Qualisys streamed and recorded in rosbag
         Output: a dictionary
-                keys: frame_names /values: [time, xyzquaternion]
+                keys: frame_names /values: 7xn array of [time, xyzquaternion]
     """
     tf_dict = {}
 
     # create data frame
     df = pd.read_csv(path_to_tf)
 
-    # get collumns
-
+    # get collumns names
     frame_col = "child_frame_id"
 
     # translation
@@ -65,7 +83,7 @@ def extract_tfbag(path_to_tf, frame_names):
 
     # t_val (list): extract and covert rostime to second
     t_val = []
-    # starting_t = rospy.rostime.Time(sec_val[0], nsec_val[0]).to_sec()
+    # starting_t = rospy.rostime.Time(sec_val[0], nsec_val[0]).to_sec() # mark up t0
     starting_t = 0
     for i in range(len(sec_val)):
         t_val.append(rospy.rostime.Time(
@@ -95,29 +113,34 @@ def extract_tfbag(path_to_tf, frame_names):
     return tf_dict
 
 
-def extract_joint_pos(path_to_values, path_to_names, joint_names=[], t_list=[]):
-    """ Extracts joint angles
+def extract_instrospection(path_to_values, path_to_names, value_names=[], t_list=[]):
+    """ Extracts joint angles from Introspection Msg data from rosbag -> csv
+        value_names: names of values to be extracted
+        t_list: selected extracting timestamps
     """
     joint_dict = {}
     # read names and values from csv to dataframe
     dt_names = pd.read_csv(path_to_names)
     dt_values = pd.read_csv(path_to_values)
 
-    # time
+    # t_val (list): extract and convert rostime to second
     sec_col = "secs"
     nsec_col = "nsecs"
-
-    # t_val (list): extract and convert rostime to second
     sec_val = dt_values.loc[:, sec_col].values
     nsec_val = dt_values.loc[:, nsec_col].values
     t_val = []
-    # starting_t = rospy.rostime.Time(sec_val[0], nsec_val[0]).to_sec()
+
+    # starting_t = rospy.rostime.Time(sec_val[0], nsec_val[0]).to_sec() # mark up t0
     starting_t = 0
     for i in range(len(sec_val)):
         t_val.append(rospy.rostime.Time(
             sec_val[i], nsec_val[i]).to_sec() - starting_t)
 
-    # t_idx (list): get list of instants where data samples are picked up
+    # t_idx (list): get list of instants where data samples are picked up based on t_list
+    # if t_list = [], extract the whole collumn
+    if not t_list:
+        t_list = t_val
+
     t_idx = []
     eps = 0.01
     for t in t_list:
@@ -138,8 +161,12 @@ def extract_joint_pos(path_to_values, path_to_names, joint_names=[], t_list=[]):
     print("total number of columns in data_names: ", len(names))
 
     # joint_idx (list): get indices of corresponding to active joints
+    # if value_names = [], extract all available values
+    if not value_names:
+        value_names = names
+
     joint_idx = []
-    for element in joint_names:
+    for element in value_names:
         if element in names:
             joint_idx.append(names.index(element))
         else:
@@ -148,8 +175,8 @@ def extract_joint_pos(path_to_values, path_to_names, joint_names=[], t_list=[]):
     print("Joint indices corresponding to active joints: ", joint_idx)
 
     # joint_val (np.darray): split data in "values" column (str) to numpy array
-    joint_val = []
-
+    # actJoint_val (np.darray):extract only active joint angle values from joint_val
+    actJoint_val = np.empty((len(t_idx), len(joint_idx)))
     dt_values_val = dt_values.loc[:, 'values'].values
 
     test_msg = dt_values_val[1]
@@ -157,25 +184,23 @@ def extract_joint_pos(path_to_values, path_to_names, joint_names=[], t_list=[]):
     first_row = first_row.replace(']', '')
     split_data = first_row.split(',')
 
-    if len(split_data) == len(names):
-        print("herreeeeee")
-        # joint_val = np.empty((0, len(names)), dtype=np.float64)
+    if not len(split_data) == len(names):
+        print("Names and value collumns did not match!")
+    else:
+        joint_val = []
+        # slicing along axis 0 given t_idx
         for i in t_idx:
             # each msg is A STRING, it needs to be splitted and group into a list of float
             msg = dt_values_val[i]
             first_row = msg.replace('[', '')
             first_row = first_row.replace(']', '')
             row_data = first_row.split(',')
-            # curr_spl = np.asarray([split_data], dtype=np.float64)
-            # joint_val = np.vstack((joint_val, curr_spl))
             joint_val.append(row_data)
-    joint_val = np.asarray(joint_val, dtype=np.float64)
-
-    # actJoint_val (np.darray):extract only active joint angle values from joint_val
-    actJoint_val = np.empty((len(t_idx), len(joint_idx)))
-    for i in range(len(joint_idx)):
-        actJoint_val[:, i] = joint_val[:, joint_idx[i]]
-    print(actJoint_val.shape)
+        joint_val = np.asarray(joint_val, dtype=np.float64)
+        
+        # slicing along axis 1 given value_idx
+        for i in range(len(joint_idx)):
+            actJoint_val[:, i] = joint_val[:, joint_idx[i]]
     return actJoint_val
 
 
@@ -300,7 +325,7 @@ def main():
     ###################################### Talos 1 marker ###############
 
     frame_names = ['"waist_frame"', '"endeffector_frame"']
-    talos_dict = extract_tfbag(path_to_tf, frame_names)
+    talos_dict = extract_tf(path_to_tf, frame_names)
     W_pos = talos_dict[frame_names[0]]
     EE_pos = talos_dict[frame_names[1]]
     t_list = [x + W_pos[0, 0] for x in t_pick]
@@ -314,7 +339,7 @@ def main():
     #                '"eeframe_BR"',
     #                '"eeframe_TL"',
     #                '"eeframe_TR"']
-    # talos_dict = extract_tfbag(path_to_tf, frame_names)
+    # talos_dict = extract_tf(path_to_tf, frame_names)
 
     # W_pos = talos_dict[frame_names[0]]
     # BL_pos = talos_dict[frame_names[1]]
@@ -438,7 +463,7 @@ def main():
     joint_names = [torso_1, torso_2, arm_right_1, arm_right_2,
                    arm_right_3, arm_right_4, arm_right_5, arm_right_6, arm_right_7]
 
-    actJoint_val = extract_joint_pos(
+    actJoint_val = extract_instrospection(
         path_to_values, path_to_names, joint_names, t_list)
     print("expectedd NbSamplexNbjoints: ", actJoint_val.shape)
 
