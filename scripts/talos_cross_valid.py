@@ -244,11 +244,13 @@ def project_frame(prj_frame, ref_frame):
     return projected_pos
 
 
-def plot_position(frame, fig=[]):
+def plot_position(frame, frame_pick,  fig=[]):
     if not fig:
         fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(frame[:, 1], frame[:, 2], frame[:, 3], color='blue')
+    ax.scatter(frame[:, 1], frame[:, 2], frame[:, 3], s=15, color='blue')
+    ax.scatter(frame_pick[:, 1], frame_pick[:, 2],
+               frame_pick[:, 3], s=80, color='red')
 
 
 def cal_diff(delta_PEE, param):
@@ -299,25 +301,9 @@ def main():
 
     t_pick = []
 
-    # left arm
-    t_pick = [18.96, 40.59]
-    # , 46.6, 64.47, 80.34,
-    #           98.2, 115.05, 131.91, 149.77,
-    #           166.62, 183.49, 200.35, 218.2,
-    #           235.06, 251.93, 268.80, 286.64,
-    #           302.51, 320.37, 338.22, 356.08,
-    #           371.95, 388.80, 405.66, 423.52,
-    #           440.37, 457.24, 471.13, 491.95,
-    #           507.83, 524.68, 541.55, 560.39,
-    #           577.25, 294.12, 609.99, 627.83,
-    #           645.70, 661.56, 679.41, 696.27,
-    #           713.14, 730.99, 748.85, 764.72,
-    #           782.56, 799.43, 816.29, 834.14,
-    #           851.0, 869.84, 884.73, 903.57,
-    #           920.44, 935.31, 954.15, 972.02,
-    #           985.89, 1003.75, 1020.62, 1037.47,
-    #           1056.31, 1089.04,
-    #           ]
+    t_pick = [52.15, 67.94, 81.95,
+              91.166, 113.213, 127.908, 142.4, 157.3]
+
     t_pick.sort()
     print(t_pick)
 
@@ -326,7 +312,9 @@ def main():
     # extract mocap data
     # Talos
 
-    path_to_tf = '/home/thanhndv212/Cooking/bag2csv/Calibration/Talos/talos_mars/calib_right_15_03_2022-03-15-14-18-26/tf_throttle.csv'
+    path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_2022-03-24-13-18-34/tf_throttle.csv'
+    path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_2022-03-24-13-18-34/introspection_datavalues_throttle.csv'
+    path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_2022-03-24-13-18-34/introspection_datanames_throttle.csv'
     ###################################### Talos 1 marker ###############
     # get full data
     talos_dict = extract_tf(path_to_tf, frame_names)
@@ -348,18 +336,16 @@ def main():
     EE_sample = get_data_sample(EE_pos, t_list)
     print("Endeffector and waist frame at static postures: ",
           EE_sample.shape, W_sample.shape)
-
+    plot_position(EE_pos, EE_sample)
+    plt.show()
     # project endeffector onto waist
     EE_prj_sample = project_frame(EE_sample, W_sample)
     print("projected endefffector: ", EE_prj_sample.shape)
     ########################################################################
 
     # extract joint configurations data
-    # Talos
-    path_to_values = '/home/thanhndv212/Cooking/bag2csv/Calibration/Talos/talos_mars/calib_right_15_03_2022-03-15-14-18-26/introspection_datavalues_throttle.csv'
-    path_to_names = '/home/thanhndv212/Cooking/bag2csv/Calibration/Talos/talos_mars/calib_right_15_03_2022-03-15-14-18-26/introspection_datanames_throttle.csv'
 
-    # talos left arm
+    # # talos left arm
     # torso_1 = '- torso_1_joint_position'
     # torso_2 = '- torso_2_joint_position'
     # arm_left_1 = '- arm_left_1_joint_position'
@@ -392,6 +378,20 @@ def main():
     print("expectedd NbSamplexNbjoints: ", actJoint_val.shape)
 
     # talos right arm joint encoder
+    # # talos left arm
+    # torso_1 = '- torso_1_joint_absolute_encoder_position'
+    # torso_2 = '- torso_2_joint_absolute_encoder_position'
+    # arm_left_1 = '- arm_left_1_joint_absolute_encoder_position'
+    # arm_left_2 = '- arm_left_2_joint_absolute_encoder_position'
+    # arm_left_3 = '- arm_left_3_joint_absolute_encoder_position'
+    # arm_left_4 = '- arm_left_4_joint_absolute_encoder_position'
+    # arm_left_5 = '- arm_left_5_joint_absolute_encoder_position'
+    # arm_left_6 = '- arm_left_6_joint_absolute_encoder_position'
+    # arm_left_7 = '- arm_left_7_joint_absolute_encoder_position'
+
+    # joint_names = [torso_1, torso_2, arm_left_1, arm_left_2,
+    #                arm_left_3, arm_left_4, arm_left_5, arm_left_6, arm_left_7]
+
     # talos right arm
     torso_1 = '- torso_1_joint_absolute_encoder_position'
     torso_2 = '- torso_2_joint_absolute_encoder_position'
@@ -512,24 +512,55 @@ def main():
     ax1 = plt.subplot(111)
     w = 0.2
     x = np.arange(param["NbSample"])
-    # bar_zero = ax1.bar(
-    #     x-w/2, PEE_errZero[0, :], width=w, color='b', align='center')
-    # bar_offset = ax1.bar(x+w/2, PEE_errOffset[0, :], width=w,
-    #                      color='r', align='center')
-    # between measured and estimated
-    PEE_m = np.transpose(EE_prj_sample).flatten('C')
-    PEE_merr_zero = cal_diff(PEE_m - PEE_en_zero, param) - \
-        np.mean(cal_diff(PEE_m - PEE_en_zero, param))
-    PEE_merr_offset = cal_diff(
-        PEE_m - PEE_en_offset, param) - \
-        np.mean(cal_diff(PEE_m - PEE_en_offset, param))
-    ax2 = plt.subplot(111)
-    w = 0.2
-    x = np.arange(param["NbSample"])
-    bar_zero = ax2.bar(
-        x-w/2, PEE_merr_zero[0, :], width=w, color='b', align='center')
-    bar_offset = ax2.bar(x+w/2, PEE_merr_offset[0, :], width=w,
+    bar_zero = ax1.bar(
+        x-w/2, PEE_errZero[0, :], width=w, color='b', align='center')
+    bar_offset = ax1.bar(x+w/2, PEE_errOffset[0, :], width=w,
                          color='r', align='center')
+    pt_name = [
+        'C1',
+        'M1',
+        'C2',
+        'M2',
+        'C3',
+        'M3',
+        'C4',
+        'M4']
+    ax1.set_ylabel('Error (m)')
+    ax1.set_xticklabels(pt_name)
+
+    ax1.legend((bar_zero[0], bar_offset[0]),
+               ('zero offset', 'mocap-based offset'))
+    # between measured and estimated
+    # PEE_m = np.transpose(EE_prj_sample).flatten('C')
+    # PEE_merr_zero = cal_diff(PEE_m - PEE_jp_zero, param) - \
+    #     np.mean(cal_diff(PEE_m - PEE_jp_zero, param))
+    # PEE_merr_offset = cal_diff(
+    #     PEE_m - PEE_jp_offset, param) - \
+    #     np.mean(cal_diff(PEE_m - PEE_jp_offset, param))
+    # print(np.linalg.norm(0.3*PEE_merr_offset[0, :])/np.sqrt(param['NbSample']),
+    #       np.linalg.norm(0.3*PEE_merr_zero[0, :])/np.sqrt(param['NbSample']))
+    # ax2 = plt.subplot(111)
+    # w = 0.2
+    # x = np.arange(param["NbSample"])
+    # bar_zero = ax2.bar(
+    #     x-w/2, 0.3*PEE_merr_zero[0, :], width=w, color='b', align='center')
+    # bar_offset = ax2.bar(x+w/2, 0.3*PEE_merr_offset[0, :], width=w,
+    #                      color='r', align='center')
+    # pt_name = [
+    #     'C1',
+    #     'M1',
+    #     'C2',
+    #     'M2',
+    #     'C3',
+    #     'M3',
+    #     'C4',
+    #     'M4']
+    # ax2.set_ylabel('Error (m)')
+    # ax2.set_xticklabels(pt_name)
+
+    # ax2.legend((bar_zero[0], bar_offset[0]),
+    #            ('zero offset', 'mocap-based offset'))
+    plt.grid()
     plt.show()
 
 

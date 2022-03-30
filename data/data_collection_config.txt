@@ -81,21 +81,125 @@
 
     # 24/03
 
-    # path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_2022-03-24-13-18-34/tf_throttle.csv'
+    #RIGHT arm
+    baseframe_offset = np.array(
+        [-0.1271, 0.0127, 0.0325, -0.0011, -0.0687, -0.0426])
+    joint_offset = np.array([-0.001010,
+                             -0.008193,
+                             -0.002009,
+                             -0.006550,
+                             0.000440,
+                             -0.004837,
+                             0.000476,
+                             -0.000980,
+                             0.002468,
+                             0.002604,
+                             -0.006682,
+                             -0.004562,
+                             -0.001481,
+                             -0.004474,
+                             -0.009181,
+                             0.016084,
+                             0.001558,
+                             -0.016645,
+                             0.000730,
+                             0.005638,
+                             -0.013776,
+                             0.002017,
+                             -0.000611,
+                             0.006237,
+                             0.007078,
+                             -0.009203,
+                             -0.000518,
+                             - 0.000750,
+                             0.000022,
+                             0.003164,
+                             0.000003,
+                             0.003300
+                             ])
 
-    # path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_2_2022-03-24-13-21-45/tf_throttle.csv'
- 
+    # no offset ground 1 
+    t_pick = [52.15, 67.94, 81.95,
+              91.166, 133.213, 127.908, 142.4, 157.3]
+    path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_2022-03-24-13-18-34/tf_throttle.csv'
+    path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_2022-03-24-13-18-34/introspection_datavalues_throttle.csv'
+    path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_2022-03-24-13-18-34/introspection_datanames_throttle.csv'
+    
+    # no offset ground 2
+    t_pick = [52.1, 68.098, 82.148,
+              98.0, 112.48, 128.338, 142.586, 157.257]
+    path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_2_2022-03-24-13-21-45/tf_throttle.csv'
+    path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_2_2022-03-24-13-21-45/introspection_datavalues_throttle.csv'
+    path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_2_2022-03-24-13-21-45/introspection_datanames_throttle.csv'
+
     # path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_3_2022-03-24-13-38-35/tf_throttle.csv'
 
     # path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_4_2022-03-24-13-41-34/tf_throttle.csv'
 
-    # path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_offset_ground_2022-03-24-14-52-49/tf_throttle.csv'
+    # offset ground 1
+    t_pick = [30.695, 50.219, 65.959, 80.31, 95.647, 110.602, 125.738, 140.492, 155.045]
+    path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_offset_ground_2022-03-24-14-52-49/tf_throttle.csv'
+    path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_offset_ground_2022-03-24-14-52-49/introspection_datavalues_throttle.csv'
+    path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_offset_ground_2022-03-24-14-52-49/introspection_datanames_throttle.csv'
+
+
+    # LEFT arm
+     baseframe_offset = np.array(
+        [-0.127255,
+         0.007645,
+         0.031922,
+         -0.012975,
+         -0.064409,
+         -0.048267])
+    joint_offset = np.array([-0.00044,
+                             0.001022,
+                             0.006391,
+                             -0.00418,
+
+                             0.000073,
+                             0.000852,
+                             0.007325,
+                             0.028524,
+
+                             -0.002976,
+                             0.002012,
+                             0.011924,
+                             0.008346,
+
+                             -0.005562,
+                             -0.009003,
+                             -0.017616,
+                             -0.011451,
+
+                             -0.000153,
+                             0.014231,
+                             -0.000501,
+                             0.002647,
+
+                             -0.002721,
+                             0.001628,
+                             -0.003694,
+                             -0.001396,
+
+                             0.012265,
+                             0.010735,
+                             -0.001548,
+                             0.000485,
+
+                             0.000005,
+                             -0.000531,
+                             0.000153,
+                             0.000326
+                             ])
+    # offset ground 1 
+    t_pick = [49.66, 65.838,80.406,95.349, 110.319, 125.88, 140.636,155.204]
+    path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_leftArm_offset_ground_2022-03-24-15-10-06/tf_throttle.csv'
 
     # path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_offset_ground_2_2022-03-24-14-57-07/tf_throttle.csv'
 
     # path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_leftArm_noOffset_ground_2022-03-24-15-29-09/tf_throttle.csv'
 
-    # path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_leftArm_offset_ground_2022-03-24-15-10-06/tf_throttle.csv'
+
 
     # path_to_tf = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_leftArm_offset_ground_2_2022-03-24-15-13-06/tf_throttle.csv'
 
@@ -117,8 +221,7 @@
 
     # 24/03
 
-    path_to_values = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_2022-03-24-13-18-34/introspection_datavalues_throttle.csv'
-    path_to_names = '/home/dvtnguyen/calibration/raw_data/talos_mars/2022_03_24/square_rightArm_noOffset_ground_2022-03-24-13-18-34/introspection_datanames_throttle.csv'
+    
     
     ###########################################################################################################################
     # tiago
