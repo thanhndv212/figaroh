@@ -59,7 +59,8 @@ param = get_param(
 q_rand = []
 Rrand_b, R_b, params_base, params_e = Calculate_base_kinematics_regressor(
     q_rand, model, data, param)
-
+for i, pb in enumerate(params_base):
+    print(i+1, pb)
 # naming for eeframe markers
 PEE_names = []
 for i in range(param['NbMarkers']):

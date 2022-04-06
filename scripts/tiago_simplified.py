@@ -197,7 +197,7 @@ def build_tiago_normal(robot, srdf_dr, srdf_file):
 
 
 def check_tiago_autocollision(robot, q, srdf_dr='', srdf_file=''):
-    build_canopies_simplified(robot)
+    # build_canopies_simplified(robot)
     # build_tiago_normal(robot, srdf_dr, srdf_file)
     collision = CollisionWrapper(robot, viz=None)
     collided_idx = []

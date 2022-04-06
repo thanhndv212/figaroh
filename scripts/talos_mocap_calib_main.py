@@ -56,7 +56,7 @@ model = robot.model
 data = robot.data
 print(model)
 
-NbGrid = 4
+NbGrid = 3
 NbSample = pow(NbGrid, 3)
 # op_arm_joint = 'arm_right_2_joint'
 # op_value = -1.5
@@ -71,15 +71,19 @@ rand_joints = [model.joints[model.getJointId('arm_right_5_joint')].idx_q,
                model.joints[model.getJointId('arm_right_6_joint')].idx_q,
                model.joints[model.getJointId('arm_right_7_joint')].idx_q]
 param = get_param(
-    robot, NbSample, TOOL_NAME='gripper_right_base_link', NbMarkers=1)
+    robot, NbSample, TOOL_NAME='arm_right_7_joint', NbMarkers=1)
 
 print(param)
 IDX_TOOL = param['IDX_TOOL']
 # 2/ Generate cartesian poses
+# cube for gripper base link
+# cube_pose = [0.55, 0.0, 0.2]  # position of the cube
+# cube_pose[len(cube_pose):] = [0, 0, 0, 1]  # orientation of the cube
+# cube_dim = [0.5, 0.6, 0.6]
 
 cube_pose = [0.55, 0.0, 0.2]  # position of the cube
 cube_pose[len(cube_pose):] = [0, 0, 0, 1]  # orientation of the cube
-cube_dim = [0.5, 0.6, 0.6]
+cube_dim = [0.4, 0.4, 0.4]
 
 PEEd_x = np.linspace(cube_pose[0] - cube_dim[0]/2,
                      cube_pose[0] + cube_dim[0]/2, NbGrid)
@@ -132,8 +136,6 @@ for iter in range(NbSample):
     cl = []
     cu = []
 
-    x_opt = np.zeros([8])
-
     nlp = cyipopt.Problem(
         n=len(x0),
         m=len(cl),
@@ -173,7 +175,7 @@ for iter in range(NbSample):
     PEEd_iter = PEEd[[param['iter']-1, NbSample +
                       param['iter']-1, 2*NbSample+param['iter']-1]]
 
-    J = np.sum(np.sqrt(np.square(PEEd_iter-PEEe)))/3
+    J = np.sum(np.sqrt(np.square(PEEd_iter-PEEe)/3))
     if J <= 1e-3:
         print("Iter {} success ".format(iter+1))
         q = np.append(q, q_opt)
@@ -186,6 +188,8 @@ for iter in range(NbSample):
 # 2/ Base parameters calculation
 # q = []
 q = np.reshape(q, (NbSample, model.nq), order='C')
+
+# raise opposite arm to avoid collision in simulator
 op_arm2 = model.joints[model.getJointId(op_arm_joint)].idx_q
 q[:, op_arm2] = np.full(NbSample, op_value)
 # print(q)
@@ -199,6 +203,8 @@ for i in range(q.shape[0]):
         print(limit_range)
         q[i, j] = np.random.uniform(
             model.lowerPositionLimit[j] + 0.05*limit_range, model.upperPositionLimit[j]-0.05*limit_range)
+
+# compute base parameters
 Rrand_b, R_b, params_base, params_e = Calculate_base_kinematics_regressor(
     q, model, data, param)
 print("condition number: ", cond_num(R_b), cond_num(Rrand_b))
@@ -269,18 +275,17 @@ for i in range(NbSample):
     time.sleep(1)
 
 
-text_file = join(
-    dirname(dirname(str(abspath(__file__)))),
-    f"data/talos/talos_full_calib_BP.txt")
-with open(text_file, 'w') as out:
-    for n in params_base:
-        out.write(n + '\n')
+# text_file = join(
+#     dirname(dirname(str(abspath(__file__)))),
+#     f"data/talos/talos_full_calib_BP.txt")
+# with open(text_file, 'w') as out:
+#     for n in params_base:
+#         out.write(n + '\n')
 
-# save designed configs to txt file
-dt = datetime.now()
-current_time = dt.strftime("%d_%b_%Y_%H%M")
-text_file = join(
-    dirname(dirname(str(abspath(__file__)))),
-    f"data/talos/talos_calib_right_exp_{current_time}.txt")
-json.dump(q_list, open(text_file, "w"))
-
+# # save designed configs to txt file
+# dt = datetime.now()
+# current_time = dt.strftime("%d_%b_%Y_%H%M")
+# text_file = join(
+#     dirname(dirname(str(abspath(__file__)))),
+#     f"data/talos/talos_calib_right_exp_{current_time}.txt")
+# json.dump(q_list, open(text_file, "w"))
