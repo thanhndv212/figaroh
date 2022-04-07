@@ -97,7 +97,7 @@ def get_param_depricated(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers
 
 
 def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,
-              calib_model='full_params', calib_idx=3):
+              calib_model='full_params', calib_idx=3, free_flyer = False):
 
     # NOTE: since joint 0 is universe and it is trivial,
     # indices of joints are different from indices of joint configuration,
@@ -107,23 +107,29 @@ def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,
 
     # robot_name: anchor as a reference point for executing
     robot_name = robot.model.name
+
     # q0: default zero configuration
     q0 = robot.q0
+
     # IDX_TOOL: frame ID of the tool
     IDX_TOOL = robot.model.getFrameId(TOOL_NAME)
+
     # tool_joint: ID of the joint right before the tool's frame (parent)
     tool_joint = robot.model.frames[IDX_TOOL].parent
+
     # indices of active joints: from base to tool_joint (exclude the first universe joint)
     actJoint_idx = robot.model.supports[tool_joint].tolist()[1:]
+
     # indices of joint configuration corresponding to active joints
     Ind_joint = [robot.model.joints[i].idx_q for i in actJoint_idx]
+
     # number of active joints
     NbJoint = len(actJoint_idx)
+
     # optimizing variable in optimization code
     x_opt_prev = np.zeros([NbJoint])
 
     print('robot name: ', robot_name)
-
     print("tool name: ", TOOL_NAME)
     print("parent joint of tool frame: ",
           robot.model.names[tool_joint])
@@ -131,10 +137,10 @@ def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,
     print("names of active joint: ")
     for i in actJoint_idx:
         print(robot.model.names[i], robot.model.joints[i].idx_q)
-
     print("number of markers: ", NbMarkers)
     print("calibration model: ", calib_model)
     print('calibration_index: ', calib_idx)
+    print("root_joint as freeflyer? ", free_flyer)
     param = {
         'robot_name': robot_name,
         'q0': q0,
@@ -149,7 +155,8 @@ def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,
         'NbMarkers': NbMarkers,
         'calib_model': calib_model,  # 'joint_offset' / 'full_params'
         'calibration_index': calib_idx,  # 3 / 6
-        'NbJoint': NbJoint
+        'NbJoint': NbJoint,
+        'freeflyer': free_flyer
     }
     return param
 
@@ -773,7 +780,7 @@ def Calculate_identifiable_kinematics_model(q, model, data, param):
 
     # obtain aggreated Jacobian matrix J and kinematic regressor R
     calib_idx = param['calibration_index']
-    R = np.empty([calib_idx*param['NbSample'], 6*model.nv])
+    R = np.empty([calib_idx*param['NbSample'], 6*(model.njoints-1)])
     for i in range(param['NbSample']):
         if MIN_MODEL == 1:
             q_rand = pin.randomConfiguration(model)
@@ -795,10 +802,12 @@ def Calculate_base_kinematics_regressor(q, model, data, param):
     # obtain joint names
     joint_names = [name for i, name in enumerate(model.names[1:])]
     geo_params = get_geoOffset(joint_names)
-    # print("joint_names: ", joint_names)
-    # print("geo_params: ", geo_params)
+
     # calculate kinematic regressor with random configs
-    Rrand = Calculate_identifiable_kinematics_model([], model, data, param)
+    if not param["freeflyer"]:
+        Rrand = Calculate_identifiable_kinematics_model([], model, data, param)
+    else: 
+        Rrand = Calculate_identifiable_kinematics_model(q, model, data, param)
     # calculate kinematic regressor with input configs
     R = Calculate_identifiable_kinematics_model(q, model, data, param)
 
@@ -827,31 +836,24 @@ def Calculate_base_kinematics_regressor(q, model, data, param):
         Rrand_sel = Rrand
         R_sel = R
 
-    # obtain a list of column after apply QR decomposition
+    # remove non affect columns from random data
     Rrand_e, paramsrand_e = eliminate_non_dynaffect(
         Rrand_sel, geo_params_sel, tol_e=1e-6)
+
+    # get indices of independent columns (base param) w.r.t to reduced regressor
     idx_base = get_baseIndex(Rrand_e, paramsrand_e)
+
+    # get base regressor and base params from random data
     Rrand_b, paramsrand_base = get_baseParams(Rrand_e, paramsrand_e)
-    # print("remained parameters: ", paramsrand_e)
-    # obtain a list of column after apply QR decomposition
+
+    # remove non affect columns from GIVEN data
     R_e, params_e = eliminate_non_dynaffect(
         R_sel, geo_params_sel, tol_e=1e-6)
 
+    # get base regressor from GIVEN data
     R_b = build_baseRegressor(R_e, idx_base)
 
-    # deprecated
-    # if param['PLOT'] == 1:
-    #     # plotting
-    #     plot1 = plt.figure()
-    #     axs = plot1.subplots(6, 1)
-    #     ylabel = ["px", "py", "pz", "phix", "phiy", "phiz"]
-    #     for j in range(6):
-    #         axs[j].plot(R[param['NbSample']*j:param['NbSample']
-    #                     * j+param['NbSample'], 17])
-    #         axs[j].set_ylabel(ylabel[j])
-        # plt.show()
-    _, s, _ = np.linalg.svd(Rrand_b)
-    print('shape of observation matrix',
+    print('shape of full regressor, reduced regressor, base regressor: ',
           Rrand.shape, Rrand_e.shape, Rrand_b.shape)
     return Rrand_b, R_b, paramsrand_base, paramsrand_e
 
