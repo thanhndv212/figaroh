@@ -1,11 +1,7 @@
-from operator import matmul
 import numpy as np
-import pandas as pd
 import time
 
 import pinocchio as pin
-from pinocchio.robot_wrapper import RobotWrapper
-from pinocchio.utils import *
 
 from sys import argv
 import os
@@ -41,10 +37,6 @@ model = robot.model
 data = robot.data
 
 
-# np.linalg.solve IK to generate configs for gripper touch a plane
-# oMdes = cartesian_to_SE3(np.array([0.7, 0, -0.3, 0, 0, 0]))
-
-# q = pin.neutral(model)
 q = robot.q0
 print(q)
 eps = 1e-4
@@ -146,7 +138,6 @@ square_dim_x = np.array([0., 0.4, 0.4])
 
 NbGrid = 8
 NbSample = pow(NbGrid, 2)
-
 PEEd_x = np.linspace(square_center_x[0] - square_dim_x[0]/2,
                      square_center_x[0] + square_dim_x[0]/2, NbGrid)
 PEEd_y = np.linspace(square_center_x[1] - square_dim_x[1]/2,
