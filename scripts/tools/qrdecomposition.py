@@ -283,8 +283,8 @@ def get_baseIndex(W_e, params_r):
     idx_base = []
     epsilon = np.finfo(float).eps  # machine epsilon
     for i in range(len(params_r)):
+        print("R-value: ", i+1, params_r[i], abs(np.diag(R)[i]))
         if abs(np.diag(R)[i]) > tolpal:
-            # print(abs(np.diag(R)[i]))
             idx_base.append(i)
     idx_base = tuple(idx_base)
     return idx_base
