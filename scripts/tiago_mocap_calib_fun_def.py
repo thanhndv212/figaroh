@@ -855,7 +855,7 @@ def Calculate_base_kinematics_regressor(q, model, data, param):
 
     print('shape of full regressor, reduced regressor, base regressor: ',
           Rrand.shape, Rrand_e.shape, Rrand_b.shape)
-    return Rrand_b, R_b, paramsrand_base, paramsrand_e
+    return Rrand_b, R_b, Rrand_e, paramsrand_base, paramsrand_e
 
 # %% IK process
 
