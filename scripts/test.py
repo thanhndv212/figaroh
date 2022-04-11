@@ -36,12 +36,12 @@ from tiago_mocap_calib_fun_def import (
 # print(type(df[['x1']]))
 
 robot = Robot(
-    # "talos_data/robots",
-    # "talos_reduced.urdf"
+    "talos_data/robots",
+    "talos_reduced.urdf",
     # "tiago_description/robots",
     # "tiago_no_hand_mod.urdf",
-    "canopies_description/robots",
-    "canopies_arm.urdf",
+    # "canopies_description/robots",
+    # "canopies_arm.urdf",
     isFext=True  # add free-flyer joint at base
 )
 model = robot.model
@@ -89,7 +89,7 @@ for i in range(model.njoints):
 # 3/ test base parameters calculation
 NbSample = 50
 param = get_param(robot, NbSample,
-                  TOOL_NAME='arm_right_7_link', NbMarkers=1, free_flyer=True)
+                  TOOL_NAME='right_sole_link', NbMarkers=1, free_flyer=True)
 
 
 def random_freeflyer_config(trans_range, orient_range):
@@ -117,10 +117,11 @@ for it in range(NbSample):
     q_i = pin.randomConfiguration(model)
     q_i[:7] = random_freeflyer_config(trans_range, orient_range)
     q[it, :] = np.copy(q_i)
-Rrand_b, R_b, params_base, params_e = Calculate_base_kinematics_regressor(
+Rrand_b, R_b, Rrand_e, params_base, params_e = Calculate_base_kinematics_regressor(
     q, model, data, param)
-_, s, _ = np.linalg.svd(Rrand_b)
-print("singular values of base reg: ", s)
+_, s, _ = np.linalg.svd(Rrand_e)
+for i, pr_e in enumerate(params_e):
+    print(pr_e, s[i])
 print("condition number: ", cond_num(R_b), cond_num(Rrand_b))
 
 print("%d base parameters: " % len(params_base))
