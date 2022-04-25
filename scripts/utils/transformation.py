@@ -1,4 +1,4 @@
-from tools.robot import Robot
+from ..tools.robot import Robot
 import matplotlib.pyplot as plt
 from pytransform3d.urdf import UrdfTransformManager
 

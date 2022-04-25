@@ -10,7 +10,7 @@ from tools.regressor import eliminate_non_dynaffect
 from tools.qrdecomposition import get_baseParams, cond_num
 
 
-from tiago_mocap_calib_fun_def import (
+from calibration_tools import (
     extract_expData,
     extract_expData4Mkr,
     get_param,
