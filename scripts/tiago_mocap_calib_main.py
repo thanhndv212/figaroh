@@ -27,7 +27,7 @@ from tools.robot import Robot
 from tools.regressor import eliminate_non_dynaffect
 from tools.qrdecomposition import get_baseParams, cond_num
 
-from tiago_mocap_calib_fun_def import (
+from calibration_tools import (
     get_param,
     get_PEE_fullvar,
     get_PEE_var,

@@ -13,7 +13,7 @@ from tools.regressor import eliminate_non_dynaffect
 from tools.qrdecomposition import get_baseParams, cond_num
 from meshcat_viewer_wrapper import MeshcatVisualizer
 
-from tiago_mocap_calib_fun_def import (
+from calibration_tools import (
     get_param,
     get_PEE_fullvar,
     get_PEE_var,
@@ -26,7 +26,7 @@ from tiago_mocap_calib_fun_def import (
     Calculate_base_kinematics_regressor,
     cartesian_to_SE3,
     CIK_problem)
-from tiago_simplified import Box
+from collision_model_simplified import Box
 
 robot = Robot(
     "talos_data/robots",
@@ -49,12 +49,33 @@ oMdes_rightF = data.oMi[model.getJointId('leg_right_6_joint')]
 oMdes_leftF = data.oMi[model.getJointId('leg_left_6_joint')]
 
 # # target frame
-tool_name = 'gripper_right_base_link'
+tool_name = 'gripper_left_fingertip_1_joint'
 target_frameId = model.getFrameId(tool_name)
 target_frame = model.frames[target_frameId]
 joint_parentId = target_frame.parent
 
-# create targes set on contact planes
+# create target set on plane
+# given a unit normal vector n = [a, b, c] and a shortest distance from origin to plane d
+# given any vector r from origin to a point on plane, we have: r.dot(n) - d  = 0
+# task: find  a set of (a,b,c,d) to optimize the observability index
+# 1/ generate a set of random cartesian points of the plane
+# 2/ construct the regressor 
+# 3/ choose the index => choose the cost function 
+# 4/ use ipopt to solve for (a,b,c,d)
+
+def generate_plannar_points(robot, n, d, NbSample):
+    """ generate random point on a given plane within workspace of robot
+    """
+    points = np.empty((NbSample, 3))
+    
+
+
+# z plane
+rpy_z = np.array([0, 0, 0])
+square_center_z = np.array([0.5, 0, -0.2])
+square_dim_z = np.array([0.4, 0.4, 0])
+NbGrid = 8
+NbSample = pow(NbGrid, 2)
 
 # x plane
 rpy_x = np.array([0, -np.pi/2, 0])
@@ -173,6 +194,7 @@ visual_model.addGeometryObject(
 targets = np.vstack((np.vstack((targets_x, targets_y)), targets_z))
 NbSample = NbPoints*3
 
+# inverse kinematic given cartesian targets
 q_sample = []
 q = q0
 for iter in range(NbSample):
