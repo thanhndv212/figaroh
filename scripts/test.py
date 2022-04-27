@@ -48,12 +48,12 @@ model = robot.model
 data = robot.data
 # # 1/ model explore
 print(model)
-for i in range(model.njoints):
-    # print(model.name)
-    print("joint name: ", model.names[i])
-    print("joint id: ", model.joints[i].id)
-    print("joint details: ", model.joints[i])
-    print("joint placement: ",  model.jointPlacements[i])
+# for i in range(model.njoints):
+#     # print(model.name)
+#     print("joint name: ", model.names[i])
+#     print("joint id: ", model.joints[i].id)
+#     print("joint details: ", model.joints[i])
+#     print("joint placement: ",  model.jointPlacements[i])
 # for i, frame in enumerate(model.frames):
 #     print(frame)
 # viz = MeshcatVisualizer(
@@ -66,12 +66,12 @@ for i in range(model.njoints):
 #     time.sleep(1)
 
 
-# target_frameId = model.getFrameId("arm_right_7_link")
-# pin.forwardKinematics(model, data, robot.q0)
-# pin.updateFramePlacements(model, data)
-# kin_reg = pin.computeFrameKinematicRegressor(
-#     model, data, target_frameId, pin.LOCAL)
-# print(kin_reg.shape, kin_reg)
+target_frameId = model.getFrameId("gripper_left_fingertip_1_link")
+pin.forwardKinematics(model, data, pin.randomConfiguration(model))
+pin.updateFramePlacements(model, data)
+kin_reg = pin.computeFrameKinematicRegressor(
+    model, data, target_frameId, pin.LOCAL)
+print(kin_reg.shape, kin_reg)
 
 # 2/ test param
 # # given the tool_frame ->
@@ -89,7 +89,7 @@ for i in range(model.njoints):
 # 3/ test base parameters calculation
 NbSample = 50
 param = get_param(robot, NbSample,
-                  TOOL_NAME='right_sole_link', NbMarkers=1, free_flyer=True)
+                  TOOL_NAME='left_sole_link', NbMarkers=1, free_flyer=True)
 
 
 def random_freeflyer_config(trans_range, orient_range):
@@ -126,7 +126,7 @@ print("condition number: ", cond_num(R_b), cond_num(Rrand_b))
 
 print("%d base parameters: " % len(params_base))
 for enum, pb in enumerate(params_base):
-    print(enum+1, pb)
+    print( pb)
 # path = '/home/thanhndv212/Cooking/figaroh/data/tiago/tiago_nov_30_64.csv'
 # PEEm_exp, q_exp = extract_expData4Mkr(path, param)
 

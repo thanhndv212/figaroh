@@ -30,20 +30,23 @@ from tiago_simplified import Box
 
 robot = Robot(
     "talos_data/robots",
-    "talos_reduced.urdf"
-    # isFext=True  # add free-flyer joint at base
+    "talos_reduced.urdf",
+    isFext=True  # add free-flyer joint at base
 )
 model = robot.model
 data = robot.data
 
 
-q = robot.q0
-print(q)
+q0 = robot.q0
 eps = 1e-4
 IT_MAX = 1000
 DT = 1e-2
 damp = 1e-12
 
+# absoluate location of two feet
+pin.forwardKinematics(model, data, q0)
+oMdes_rightF = data.oMi[model.getJointId('leg_right_6_joint')]
+oMdes_leftF = data.oMi[model.getJointId('leg_left_6_joint')]
 
 # # target frame
 tool_name = 'gripper_right_base_link'
@@ -51,52 +54,51 @@ target_frameId = model.getFrameId(tool_name)
 target_frame = model.frames[target_frameId]
 joint_parentId = target_frame.parent
 
-# create target set on plane
-# z plane
-rpy_z = np.array([0, 0, 0])
-square_center_z = np.array([0.5, 0, -0.2])
-square_dim_z = np.array([0.4, 0.4, 0])
+# create targes set on contact planes
+
+# x plane
+rpy_x = np.array([0, -np.pi/2, 0])
+square_center_x = np.array([0.7, 0., 0.0])
+square_dim_x = np.array([0., 0.4, 0.4])
+
 NbGrid = 8
-NbSample = pow(NbGrid, 2)
+NbPoints = pow(NbGrid, 2)
+PEEd_x = np.linspace(square_center_x[0] - square_dim_x[0]/2,
+                     square_center_x[0] + square_dim_x[0]/2, NbGrid)
+PEEd_y = np.linspace(square_center_x[1] - square_dim_x[1]/2,
+                     square_center_x[1] + square_dim_x[1]/2, NbGrid)
+PEEd_z = np.linspace(square_center_x[2] - square_dim_x[2]/2,
+                     square_center_x[2] + square_dim_x[2]/2, NbGrid)
 
-PEEd_x = np.linspace(square_center_z[0] - square_dim_z[0]/2,
-                     square_center_z[0] + square_dim_z[0]/2, NbGrid)
-PEEd_y = np.linspace(square_center_z[1] - square_dim_z[1]/2,
-                     square_center_z[1] + square_dim_z[1]/2, NbGrid)
-PEEd_z = np.linspace(square_center_z[2] - square_dim_z[2]/2,
-                     square_center_z[2] + square_dim_z[2]/2, NbGrid)
-
-PEEd_2d_z = np.empty((NbSample, 3))
-for i in range(PEEd_x.shape[0]):
-    for j in range(PEEd_y.shape[0]):
+PEEd_2d_x = np.empty((NbPoints, 3))
+for i in range(PEEd_y.shape[0]):
+    for j in range(PEEd_z.shape[0]):
         idx = NbGrid*i + j
-        PEEd_2d_z[idx, :] = np.array(
-            [PEEd_x[i], PEEd_y[j], square_center_z[2]])
-targets_z = np.empty((NbSample, 6))
-for ii in range(NbSample):
-    targets_z[ii, 0:3] = PEEd_2d_z[ii, :]
-    targets_z[ii, 3:6] = rpy_z
-
-plane_placement_z = cartesian_to_SE3(
-    np.array([0.5, 0, -0.2 - 0.246525, 0, 0, 0]))  # -0.246525
+        PEEd_2d_x[idx, :] = np.array(
+            [square_center_x[0], PEEd_y[i], PEEd_z[j]])
+targets_x = np.empty((NbPoints, 6))
+for ii in range(NbPoints):
+    targets_x[ii, 0:3] = PEEd_2d_x[ii, :]
+    targets_x[ii, 3:6] = rpy_x
+plane_placement_x = cartesian_to_SE3(
+    np.array([0.7+0.246525, 0., 0.0, 0, -np.pi/2, 0]))  # -0.246525
 visual_model = robot.visual_model
 geom_model = robot.geom_model
 geom_model.addGeometryObject(
-    Box("planez", model.getJointId("universe"), 0.8,
-        0.8, 0.002, plane_placement_z)
+    Box("planex", model.getJointId("universe"), 0.8,
+        0.8, 0.002, plane_placement_x)
 )
 visual_model.addGeometryObject(
-    Box("planez", model.getJointId("universe"), 0.8,
-        0.8, 0.002, plane_placement_z)
+    Box("planex", model.getJointId("universe"), 0.8,
+        0.8, 0.002, plane_placement_x)
 )
-
 
 # y plane
 rpy_y = np.array([np.pi/2, 0, 0])
 square_center_y = np.array([0.5, 0.2, 0.0])
 square_dim_y = np.array([0.4, 0, 0.4])
 NbGrid = 8
-NbSample = pow(NbGrid, 2)
+NbPoints = pow(NbGrid, 2)
 
 PEEd_x = np.linspace(square_center_y[0] - square_dim_y[0]/2,
                      square_center_y[0] + square_dim_y[0]/2, NbGrid)
@@ -105,15 +107,15 @@ PEEd_y = np.linspace(square_center_y[1] - square_dim_y[1]/2,
 PEEd_z = np.linspace(square_center_y[2] - square_dim_y[2]/2,
                      square_center_y[2] + square_dim_y[2]/2, NbGrid)
 
-PEEd_2d_y = np.empty((NbSample, 3))
+PEEd_2d_y = np.empty((NbPoints, 3))
 for i in range(PEEd_x.shape[0]):
     for j in range(PEEd_z.shape[0]):
         idx = NbGrid*i + j
         PEEd_2d_y[idx, :] = np.array(
             [PEEd_x[i], square_center_y[1], PEEd_z[j]])
 
-targets_y = np.empty((NbSample, 6))
-for ii in range(NbSample):
+targets_y = np.empty((NbPoints, 6))
+for ii in range(NbPoints):
     targets_y[ii, 0:3] = PEEd_2d_y[ii, :]
     targets_y[ii, 3:6] = rpy_y
 
@@ -130,48 +132,49 @@ visual_model.addGeometryObject(
         0.8, 0.002, plane_placement_y)
 )
 
-
-# x plane
-rpy_x = np.array([0, -np.pi/2, 0])
-square_center_x = np.array([0.7, 0., 0.0])
-square_dim_x = np.array([0., 0.4, 0.4])
-
+# z plane
+rpy_z = np.array([0, 0, 0])
+square_center_z = np.array([0.5, 0, -0.2])
+square_dim_z = np.array([0.4, 0.4, 0])
 NbGrid = 8
-NbSample = pow(NbGrid, 2)
-PEEd_x = np.linspace(square_center_x[0] - square_dim_x[0]/2,
-                     square_center_x[0] + square_dim_x[0]/2, NbGrid)
-PEEd_y = np.linspace(square_center_x[1] - square_dim_x[1]/2,
-                     square_center_x[1] + square_dim_x[1]/2, NbGrid)
-PEEd_z = np.linspace(square_center_x[2] - square_dim_x[2]/2,
-                     square_center_x[2] + square_dim_x[2]/2, NbGrid)
+NbPoints = pow(NbGrid, 2)
 
-PEEd_2d_x = np.empty((NbSample, 3))
-for i in range(PEEd_y.shape[0]):
-    for j in range(PEEd_z.shape[0]):
+PEEd_x = np.linspace(square_center_z[0] - square_dim_z[0]/2,
+                     square_center_z[0] + square_dim_z[0]/2, NbGrid)
+PEEd_y = np.linspace(square_center_z[1] - square_dim_z[1]/2,
+                     square_center_z[1] + square_dim_z[1]/2, NbGrid)
+PEEd_z = np.linspace(square_center_z[2] - square_dim_z[2]/2,
+                     square_center_z[2] + square_dim_z[2]/2, NbGrid)
+
+PEEd_2d_z = np.empty((NbPoints, 3))
+for i in range(PEEd_x.shape[0]):
+    for j in range(PEEd_y.shape[0]):
         idx = NbGrid*i + j
-        PEEd_2d_x[idx, :] = np.array(
-            [square_center_x[0], PEEd_y[i], PEEd_z[j]])
-targets_x = np.empty((NbSample, 6))
-for ii in range(NbSample):
-    targets_x[ii, 0:3] = PEEd_2d_x[ii, :]
-    targets_x[ii, 3:6] = rpy_x
-plane_placement_x = cartesian_to_SE3(
-    np.array([0.7+0.246525, 0., 0.0, 0, -np.pi/2, 0]))  # -0.246525
+        PEEd_2d_z[idx, :] = np.array(
+            [PEEd_x[i], PEEd_y[j], square_center_z[2]])
+targets_z = np.empty((NbPoints, 6))
+for ii in range(NbPoints):
+    targets_z[ii, 0:3] = PEEd_2d_z[ii, :]
+    targets_z[ii, 3:6] = rpy_z
+
+plane_placement_z = cartesian_to_SE3(
+    np.array([0.5, 0, -0.2 - 0.246525, 0, 0, 0]))  # -0.246525
 visual_model = robot.visual_model
 geom_model = robot.geom_model
 geom_model.addGeometryObject(
-    Box("planex", model.getJointId("universe"), 0.8,
-        0.8, 0.002, plane_placement_x)
+    Box("planez", model.getJointId("universe"), 0.8,
+        0.8, 0.002, plane_placement_z)
 )
 visual_model.addGeometryObject(
-    Box("planex", model.getJointId("universe"), 0.8,
-        0.8, 0.002, plane_placement_x)
+    Box("planez", model.getJointId("universe"), 0.8,
+        0.8, 0.002, plane_placement_z)
 )
 
 targets = np.vstack((np.vstack((targets_x, targets_y)), targets_z))
-NbSample = NbSample*3
+NbSample = NbPoints*3
 
 q_sample = []
+q = q0
 for iter in range(NbSample):
     i = 0
     oMdes = cartesian_to_SE3(targets[iter, :])
@@ -179,6 +182,13 @@ for iter in range(NbSample):
         pin.forwardKinematics(model, data, q)
         dMi = oMdes.actInv(data.oMi[joint_parentId])
         err = pin.log(dMi).vector
+
+        # to fix two feet on ground
+        dMi_rightF = oMdes_rightF.actInv(data.oMi[model.getJointId('leg_right_6_joint')])
+        err_rightF = pin.log(dMi_rightF).vector
+
+        dMi_leftF = oMdes_leftF.actInv(data.oMi[model.getJointId('leg_left_6_joint')])
+        err_leftF = pin.log(dMi_leftF).vector
         if np.linalg.norm(err) < eps:
             success = True
             break
@@ -200,21 +210,22 @@ for iter in range(NbSample):
 
     # print('\nresult: %s' % q.flatten().tolist())
     # print('\nfinal error: %s' % err.T)
+
 q_sample = np.array(q_sample)
-print(q_sample.shape)
 
-viz = MeshcatVisualizer(
-    model=robot.model, collision_model=robot.collision_model,
-    visual_model=robot.visual_model, url='classical'
-)
+# visualize motion
+# viz = MeshcatVisualizer(
+#     model=robot.model, collision_model=robot.collision_model,
+#     visual_model=robot.visual_model, url='classical'
+# )
 
-time.sleep(3)
-for i in range(q_sample.shape[0]):
-    viz.display(q_sample[i, :])
-    time.sleep(0.2)
+# time.sleep(3)
+# for i in range(q_sample.shape[0]):
+#     viz.display(q_sample[i, :])
+#     time.sleep(0.2)
 
 
-# identifiable parameters for a random plane
+# Normal vector of contact plane
 norm_vec_x = np.array([-1/square_center_x[0], 0, 0])
 
 norm_vec_y = np.array([0, -1/square_center_y[0],  0])
@@ -225,8 +236,9 @@ norm_vec = np.empty((3, 3))
 norm_vec[0, :] = norm_vec_x
 norm_vec[1, :] = norm_vec_y
 norm_vec[2, :] = norm_vec_z
+
 # create observation matrix
-R = np.empty((q_sample.shape[0],  6*model.nv))
+R = np.empty((q_sample.shape[0],  6*(model.njoints-1)))
 for jj in range(3):
     for ii in range(int(q_sample.shape[0]/3)):
         q_i = q_sample[jj*int(q_sample.shape[0]/3) + ii, :]
@@ -249,7 +261,7 @@ print(len(params_e), R_e.shape)
 
 R_b, params_base = get_baseParams(R_e, params_e)
 for i, pb in enumerate(params_base):
-    print(i+1, pb)
+    print( pb)
 
 # q_rand = pin.randomConfiguration(model)
 
