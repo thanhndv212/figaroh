@@ -1,7 +1,9 @@
+import time
+prev_time = time.time()
 import sys
 
-sys.path.append('/home/thanhndv212/miniconda3/lib/python3.8/site-packages')
-sys.path.remove('/opt/openrobots/lib/python3.6/site-packages')
+# sys.path.append('/home/thanhndv212/miniconda3/lib/python3.8/site-packages')
+# sys.path.remove('/opt/openrobots/lib/python3.6/site-packages')
 
 from os.path import abspath, dirname, join
 from ast import Sub
@@ -287,7 +289,7 @@ def chosen_info_matrix(R, var):
 import cvxopt as cvx
 import picos as pc 
 
-NbSample = 1000
+NbSample = 500
 R_b, NbSample = get_random_reg(robot, NbSample)
 R_rearr = rearrange_rb(R_b, NbSample)
 subX_list = sub_info_matrix(R_rearr, NbSample)
@@ -313,6 +315,10 @@ D_MAXDET.set_objective('max', t)
 print(D_MAXDET)
 # solution
 solution = D_MAXDET.solve(solver='cvxopt')
+print(solution.problemStatus)
+print(solution.info)
+solve_time = time.time() - prev_time
+print('solve time: ', solve_time)
 
 # solution re-arrangement
 # list 
@@ -336,15 +342,23 @@ max_NbChosen = NbSample
 min_NbChosen = 25
 if max_NbChosen < min_NbChosen:
     print("Infeasible design")
-
-# calculate detroot by a window of min_NbChosen elements on decreasing order
+# evaluate NbChosen given a certain NbSample 
 det_root_list = []
 n_key_list = []
 for nbc in range(min_NbChosen, NbSample+1):
-    n_key = list(w_dict_sort.keys())[(nbc-min_NbChosen):nbc]
+    n_key = list(w_dict_sort.keys())[0:nbc]
     n_key_list.append(n_key)
-    M_i = pc.sum(subX_list[i] for i in n_key)
+    M_i = pc.sum(w_dict_sort[i]*subX_list[i] for i in n_key)
     det_root_list.append(pc.DetRootN(M_i))
+
+# calculate detroot by a window of min_NbChosen elements on decreasing order
+# det_root_list = []
+# n_key_list = []
+# for nbc in range(min_NbChosen, NbSample+1):
+#     n_key = list(w_dict_sort.keys())[(nbc-min_NbChosen):nbc]
+#     n_key_list.append(n_key)
+#     M_i = pc.sum(subX_list[i] for i in n_key)
+#     det_root_list.append(pc.DetRootN(M_i))
 
 # calculate corresponding condition number 
 print(R_rearr.shape)
@@ -361,30 +375,30 @@ det_root_whole = pc.DetRootN(M_whole)
 # print(cond_whole, cond_list)
 
 # # select combination length min_NbChosen on NbSample from itertools 
-det_root_combi = []
-n_key_combi = []
-print('pass here')
-from itertools import combinations as combi 
-for nb in combi(list(w_dict_sort.keys()), min_NbChosen): 
-    n_key_combi.append(list(nb))
+# det_root_combi = []
+# n_key_combi = []
+# print('pass here')
+# from itertools import combinations as combi 
+# for nb in combi(list(w_dict_sort.keys()), min_NbChosen): 
+#     n_key_combi.append(list(nb))
 # for n_key in n_key_combi: 
 #     M_i = pc.sum(subX_list[i] for i in n_key)
 #     det_root_combi.append(pc.DetRootN(M_i))
 
-def find_index_sublist(list, sub_list):
-    idx_list = []
-    for idx, l_i in enumerate(list):
-        if l_i in sub_list:
-            idx_list.append(idx)
+# def find_index_sublist(list, sub_list):
+#     idx_list = []
+#     for idx, l_i in enumerate(list):
+#         if l_i in sub_list:
+#             idx_list.append(idx)
 
-    return idx_list
-idx_subList = find_index_sublist(n_key_combi, n_key_list)
-
-NbSample_1 = 25  
-R_b_1, NbSample_1 = get_random_reg(robot, NbSample_1)
-R_rearr_1 = rearrange_rb(R_b_1, NbSample_1)
-M_whole_1 = np.matmul(R_rearr_1.T, R_rearr_1)
-det_root_whole_1 = pc.DetRootN(M_whole_1)
+#     return idx_list
+# idx_subList = find_index_sublist(n_key_combi, n_key_list)
+idx_subList = range(len(det_root_list))
+# NbSample_1 = 25  
+# R_b_1, NbSample_1 = get_random_reg(robot, NbSample_1)
+# R_rearr_1 = rearrange_rb(R_b_1, NbSample_1)
+# M_whole_1 = np.matmul(R_rearr_1.T, R_rearr_1)
+# det_root_whole_1 = pc.DetRootN(M_whole_1)
 # plot
 fig, ax = plt.subplots(2)
 
@@ -395,8 +409,7 @@ ax[0].set_ylabel('m-th root of determinant of (mxm) information matrix', color=c
 ax[0].tick_params(axis='y', labelcolor=color)
 ax[0].scatter(idx_subList, det_root_list, color=color)
 ax[0].hlines(det_root_whole, min(idx_subList), max(idx_subList))
-ax[0].hlines(det_root_whole_1, min(idx_subList), max(idx_subList))
-
+# ax[0].hlines(det_root_whole_1, min(idx_subList), max(idx_subList))
 
 # # plot combinatrionarial det root 
 # ax_1 = ax[0].twinx()
