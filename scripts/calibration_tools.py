@@ -8,7 +8,7 @@ import multiprocessing as mp
 from functools import partial
 import matplotlib.pyplot as plt
 import numdifftools as nd
-import quadprog as qp
+# import quadprog as qp
 import pandas as pd
 
 from tools.regressor import eliminate_non_dynaffect
@@ -97,7 +97,7 @@ def get_param_depricated(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers
 
 
 def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,
-              calib_model='full_params', calib_idx=3, free_flyer = False):
+              calib_model='full_params', calib_idx=3, free_flyer=False):
 
     # NOTE: since joint 0 is universe and it is trivial,
     # indices of joints are different from indices of joint configuration,
@@ -156,7 +156,7 @@ def get_param(robot, NbSample, TOOL_NAME='ee_marker_joint', NbMarkers=1,
         'calib_model': calib_model,  # 'joint_offset' / 'full_params'
         'calibration_index': calib_idx,  # 3 / 6
         'NbJoint': NbJoint,
-        'freeflyer': free_flyer
+        'free_flyer': free_flyer
     }
     return param
 
@@ -754,6 +754,7 @@ def get_PEE(offset_var, q, model, data, param, noise=False):
 
 def Calculate_kinematics_model(q_i, model, data, IDX_TOOL):
     """ Calculate jacobian matrix and kinematic regressor given ONE configuration.
+        Details of calculation at regressor.hxx and se3-tpl.hpp
     """
     # print(mp.current_process())
     # pin.updateGlobalPlacements(model , data)
@@ -804,9 +805,9 @@ def Calculate_base_kinematics_regressor(q, model, data, param):
     geo_params = get_geoOffset(joint_names)
 
     # calculate kinematic regressor with random configs
-    if not param["freeflyer"]:
+    if not param["free_flyer"]:
         Rrand = Calculate_identifiable_kinematics_model([], model, data, param)
-    else: 
+    else:
         Rrand = Calculate_identifiable_kinematics_model(q, model, data, param)
     # calculate kinematic regressor with input configs
     R = Calculate_identifiable_kinematics_model(q, model, data, param)
@@ -855,7 +856,7 @@ def Calculate_base_kinematics_regressor(q, model, data, param):
 
     print('shape of full regressor, reduced regressor, base regressor: ',
           Rrand.shape, Rrand_e.shape, Rrand_b.shape)
-    return Rrand_b, R_b, Rrand_e, paramsrand_base, paramsrand_e
+    return Rrand_b, R_b, R_e, paramsrand_base, paramsrand_e
 
 # %% IK process
 
