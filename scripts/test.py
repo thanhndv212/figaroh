@@ -2,8 +2,8 @@ import time
 prev_time = time.time()
 import sys
 
-# sys.path.append('/home/thanhndv212/miniconda3/lib/python3.8/site-packages')
-# sys.path.remove('/opt/openrobots/lib/python3.6/site-packages')
+sys.path.append('/home/thanhndv212/miniconda3/lib/python3.8/site-packages')
+sys.path.remove('/opt/openrobots/lib/python3.6/site-packages')
 
 from os.path import abspath, dirname, join
 from ast import Sub
@@ -289,7 +289,7 @@ def chosen_info_matrix(R, var):
 import cvxopt as cvx
 import picos as pc 
 
-NbSample = 500
+NbSample = 30
 R_b, NbSample = get_random_reg(robot, NbSample)
 R_rearr = rearrange_rb(R_b, NbSample)
 subX_list = sub_info_matrix(R_rearr, NbSample)
@@ -401,13 +401,13 @@ idx_subList = range(len(det_root_list))
 # det_root_whole_1 = pc.DetRootN(M_whole_1)
 # plot
 fig, ax = plt.subplots(2)
-
+ratio = det_root_whole/det_root_list[-1]
 # # evolution of detroot along decending order
 color = 'tab:red'
 ax[0].set_xlabel('Data point index')
 ax[0].set_ylabel('m-th root of determinant of (mxm) information matrix', color=color)
 ax[0].tick_params(axis='y', labelcolor=color)
-ax[0].scatter(idx_subList, det_root_list, color=color)
+ax[0].scatter(idx_subList, ratio*np.array(det_root_list), color=color)
 ax[0].hlines(det_root_whole, min(idx_subList), max(idx_subList))
 # ax[0].hlines(det_root_whole_1, min(idx_subList), max(idx_subList))
 
