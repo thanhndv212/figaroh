@@ -169,6 +169,8 @@ regressors.
 #     print(params_base_1[i])
 # print(np.array_equal(R_b[:, 0:3], R_b_1[:, 0:3]))
 
+
+## 6/ find optimal combination of data samples from  a candidate pool (combinationarial optimization)
 robot = Robot(
     "talos_data/robots",
     "talos_reduced.urdf",
@@ -183,6 +185,8 @@ data = robot.data
 
 
 def get_random_reg(robot, NbSample):
+    """ generate random configurations for free_flyer base within a defined range
+    """
     param = get_param(robot, NbSample,
                     TOOL_NAME='gripper_left_fingertip_1_link', NbMarkers=1, free_flyer=False)
 
@@ -203,10 +207,10 @@ def get_random_reg(robot, NbSample):
         q, model, data, param)
     return  R_b, NbSample
 
-# rearrange base regressor
-
 
 def rearrange_rb(R_b, NbSample):
+    """ rearrange the kinematic regressor by sample numbered order
+    """
     Rb_rearr = np.empty_like(R_b)
     for i in range(3):
         for j in range(NbSample):
@@ -234,7 +238,9 @@ def filter_matrix(var, NbSample, NbChosen):
 
 
 def sub_info_matrix(R, NbSample):
-    "Returns a list of sub regressors which corresponds to each data point"
+    """ Returns a list of sub infor matrices (product of transpose of regressor and regressor)
+        which corresponds to each data sample
+    """
     subX_list = []
     for it in range(NbSample):
         subX = np.matmul(R[it*3:(it*3+3), :].T, R[it*3:(it*3+3), :])
@@ -243,6 +249,8 @@ def sub_info_matrix(R, NbSample):
 
 
 def chosen_info_matrix(R, var):
+    """ Returns info matrix of all CHOSEN data samples, which are marked as value 1 in var
+    """
     # assert cp.sum(var) == NbChosen, "Invalid variable!"
     full_X = np.zeros_like(np.matmul(R.T, R))
     count = 0
@@ -258,8 +266,8 @@ def chosen_info_matrix(R, var):
     return full_X
 
 # investigate log_det vs NbSample
-
-# NbSample_list = 20*np.array(list(range(1,250 )))
+## compare criteron value as NbSamples increases
+# NbSample_list = 25*np.array(list(range(1,20 )))
 # print(NbSample_list)
 # log_det = []
 
@@ -281,7 +289,6 @@ def chosen_info_matrix(R, var):
 
 #     log_detX = np.log(np.linalg.det(aggrX))
 #     log_det.append(log_detX)
-# plt.plot(NbSample_list, log_det)
 # plt.show()
 
 # picos optimization ( A-optimality, C-optimality, D-optimality)
@@ -289,7 +296,7 @@ def chosen_info_matrix(R, var):
 import cvxopt as cvx
 import picos as pc 
 
-NbSample = 30
+NbSample = 500
 R_b, NbSample = get_random_reg(robot, NbSample)
 R_rearr = rearrange_rb(R_b, NbSample)
 subX_list = sub_info_matrix(R_rearr, NbSample)
@@ -325,6 +332,7 @@ print('solve time: ', solve_time)
 w_list =[]
 for i in range(w.dim):
     w_list.append(float(w.value[i]))
+print("sum of all element in vector solution: ", sum(w_list))
 # dict
 w_dict = {}
 for i, w_i in enumerate(w_list): 
@@ -410,6 +418,9 @@ ax[0].tick_params(axis='y', labelcolor=color)
 ax[0].scatter(idx_subList, ratio*np.array(det_root_list), color=color)
 ax[0].hlines(det_root_whole, min(idx_subList), max(idx_subList))
 # ax[0].hlines(det_root_whole_1, min(idx_subList), max(idx_subList))
+# ax[0].scatter(NbSample_list, log_det, color='tab:green')
+
+
 
 # # plot combinatrionarial det root 
 # ax_1 = ax[0].twinx()
@@ -423,8 +434,8 @@ color = 'tab:blue'
 ax[1].set_ylabel('Quality of estimation per data point', color=color)  # we already handled the x-label with ax[0]
 ax[1].tick_params(axis='y', labelcolor=color)
 w_list.sort(reverse=True)
-ax[1].plot(range(NbSample), w_list, color=color)
-
+ax[1].scatter(range(NbSample), w_list, color=color)
+ax[1].set_yscale("log")
 
 plt.show()
 # cvxpy optimization problem formulization
