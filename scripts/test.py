@@ -170,7 +170,7 @@ regressors.
 # print(np.array_equal(R_b[:, 0:3], R_b_1[:, 0:3]))
 
 
-## 6/ find optimal combination of data samples from  a candidate pool (combinationarial optimization)
+## 6/ find optimal combination of data samples from  a candidate pool (combinatorial optimization)
 robot = Robot(
     "talos_data/robots",
     "talos_reduced.urdf",
@@ -184,7 +184,7 @@ model = robot.model
 data = robot.data
 
 
-def get_random_reg(robot, NbSample):
+def get_random_reg_free_flyer(robot, NbSample):
     """ generate random configurations for free_flyer base within a defined range
     """
     param = get_param(robot, NbSample,
@@ -272,7 +272,7 @@ def chosen_info_matrix(R, var):
 # log_det = []
 
 # for nb in NbSample_list:
-#     R_b, NbSample = get_random_reg(robot, nb)
+#     R_b, NbSample = get_random_reg_free_flyer(robot, nb)
 
 #     R_rearr = rearrange_rb(R_b, NbSample)
 #     _, u, _ = np.linalg.svd(R_rearr)
@@ -297,10 +297,10 @@ import cvxopt as cvx
 import picos as pc 
 
 NbSample = 500
-R_b, NbSample = get_random_reg(robot, NbSample)
+R_b, NbSample = get_random_reg_free_flyer(robot, NbSample)
 R_rearr = rearrange_rb(R_b, NbSample)
 subX_list = sub_info_matrix(R_rearr, NbSample)
-
+print(len(subX_list))
 # # transform to cvx matrix-type data
 # M = []
 # for i in range(len(subX_list)):
@@ -320,6 +320,7 @@ det_root_cons = D_MAXDET.add_constraint(t <= pc.DetRootN(Mw))
 # objective
 D_MAXDET.set_objective('max', t)
 print(D_MAXDET)
+
 # solution
 solution = D_MAXDET.solve(solver='cvxopt')
 print(solution.problemStatus)
@@ -403,7 +404,7 @@ det_root_whole = pc.DetRootN(M_whole)
 # idx_subList = find_index_sublist(n_key_combi, n_key_list)
 idx_subList = range(len(det_root_list))
 # NbSample_1 = 25  
-# R_b_1, NbSample_1 = get_random_reg(robot, NbSample_1)
+# R_b_1, NbSample_1 = get_random_reg_free_flyer(robot, NbSample_1)
 # R_rearr_1 = rearrange_rb(R_b_1, NbSample_1)
 # M_whole_1 = np.matmul(R_rearr_1.T, R_rearr_1)
 # det_root_whole_1 = pc.DetRootN(M_whole_1)
@@ -438,6 +439,8 @@ ax[1].scatter(range(NbSample), w_list, color=color)
 ax[1].set_yscale("log")
 
 plt.show()
+
+
 # cvxpy optimization problem formulization
 
 
@@ -448,13 +451,9 @@ plt.show()
 #         self._obj_fnc = 0
 #         self._constraints = []
 #         self._problem = cp.Problem(cp.Maximize(obj), constraints)
-
-
 #     def solve(self):
 #         self._problem.solve()
 #         return self._problem.value, self._var.value
-
-
 # var = []
 # par= []
 # print(subX_list[0].shape)
