@@ -1,8 +1,8 @@
 import time
 import sys
 
-# sys.path.append('/home/thanhndv212/miniconda3/lib/python3.8/site-packages')
-# sys.path.remove('/opt/openrobots/lib/python3.6/site-packages')
+sys.path.append('/home/thanhndv212/miniconda3/lib/python3.8/site-packages')
+sys.path.remove('/opt/openrobots/lib/python3.6/site-packages')
 
 from os.path import abspath, dirname, join
 import os
@@ -32,10 +32,10 @@ from tools.robot import Robot
 
 
 # robot = Robot(
-#     "talos_data/robots",
-#     "talos_reduced.urdf",
-#     # "tiago_description/robots",
-#     # "tiago_no_hand_mod.urdf",
+#     # "talos_data/robots",
+#     # "talos_reduced.urdf",
+#     "tiago_description/robots",
+#     "tiago_no_hand_mod.urdf",
 #     # "canopies_description/robots",
 #     # "canopies_arm.urdf",
 #     isFext=True  # add free-flyer joint at base
@@ -43,15 +43,15 @@ from tools.robot import Robot
 # model = robot.model
 # data = robot.data
 # # 1/ model explore
-""" Explore the model's attributes
-"""
+# """ Explore the model's attributes
+# """
 # print(model)
 # for i in range(model.njoints):
 #     # print(model.name)
 #     print("joint name: ", model.names[i])
 #     print("joint id: ", model.joints[i].id)
 #     print("joint details: ", model.joints[i])
-#     print("joint placement: ",  model.jointPlacements[i])
+    # print("joint placement: ",  model.jointPlacements[i])
 # for i, frame in enumerate(model.frames):
 #     print(frame)
 # viz = MeshcatVisualizer(
@@ -281,12 +281,7 @@ def chosen_info_matrix(R, var):
 #     log_det.append(log_detX)
 # plt.show()
 
-NbSample = 500
-R_b, NbSample = get_random_reg_free_flyer(robot, NbSample)
-R_rearr = rearrange_rb(R_b, NbSample)
-subX_list = sub_info_matrix(R_rearr, NbSample)
-subX_dict = dict(zip(np.arange(NbSample,), subX_list))
-NbChosen = 90
+
 
 class det_max():
     def __init__(self, candidate_pool, NbChosen):
@@ -295,7 +290,7 @@ class det_max():
         self.cur_set = []
         self.fail_set = []
         self.opt_set = []
-        self.opt_critD = 0
+        self.opt_critD = []
 
 
     def get_critD(self, set):
@@ -346,27 +341,39 @@ class det_max():
 
                 if cur_delta_critD < delta_critD: 
                     delta_critD = cur_delta_critD
-                    rm_j = j
-            
+                    rm_j = j         
             cur_set.remove(rm_j)
             opt_critD = self.get_critD(cur_set)
-            
             fin_set = set(cur_set)
             # print(opt_k == rm_j)
             # print(opt_critD)
-        self.opt_critD = opt_critD
-        
+            self.opt_critD.append(opt_critD)       
         return self.opt_critD
 
+
+NbSample = 750
+NbChosen = 50
+for j in range(1):
+    R_b, NbSample = get_random_reg_free_flyer(robot, NbSample)
+    R_rearr = rearrange_rb(R_b, NbSample)
+    subX_list = sub_info_matrix(R_rearr, NbSample)
+    subX_dict = dict(zip(np.arange(NbSample,), subX_list))
+
+    for i in range(10):
+        prev_time = time.time()
+        DM = det_max(subX_dict, NbChosen)
+        y = DM.main_algo()
+        x = np.arange(len(y))
+        plt.plot(y)
+        plt.scatter(x[-1], y[-1], c='red', marker="^")
+        print(time.time() - prev_time)
+        # NbChosen += 10
+    # NbSample = NbSample*2
+# plt.show()
+
+#### picos optimization ( A-optimality, C-optimality, D-optimality)
+
 prev_time = time.time()
-
-DM = det_max(subX_dict, NbChosen)
-print(DM.main_algo())
-print(time.time() - prev_time)
-##### picos optimization ( A-optimality, C-optimality, D-optimality)
-
-prev_time = time.time()
-
 # criteria on whole candidate set 
 cond_whole = np.linalg.cond(R_rearr)
 M_whole = np.matmul(R_rearr.T, R_rearr)
@@ -405,6 +412,12 @@ w_dict_sort = dict(reversed(sorted(w_dict.items(), key=lambda item: item[1])))
 sol_keys = list(w_dict_sort.keys())
 
 print(DM.get_critD(sol_keys[:NbChosen]))
+plt.scatter(x[-1], DM.get_critD(sol_keys[:(NbChosen+1)]), color='g',  marker="^")
+plt.ylabel("criterion value - D optimality")
+plt.xlabel("iteration")
+plt.grid()
+plt.show()
+
 # # eps = 1e-5
 # # for i, k in enumerate(w_dict_sort): 
 # #     print(k)
@@ -412,96 +425,96 @@ print(DM.get_critD(sol_keys[:NbChosen]))
 # #         max_NbChosen = i
 # #         break
 
-max_NbChosen = NbSample
-min_NbChosen = NbChosen
-if max_NbChosen < min_NbChosen:
-    print("Infeasible design")
+# max_NbChosen = NbSample 
+# min_NbChosen = NbChosen
+# if max_NbChosen < min_NbChosen:
+#     print("Infeasible design")
 
-# evaluate NbChosen given a certain NbSample 
-det_root_list = []
-n_key_list = []
-for nbc in range(min_NbChosen, NbSample+1):
-    n_key = list(w_dict_sort.keys())[0:nbc]
-    n_key_list.append(n_key)
-    M_i = pc.sum(w_dict_sort[i]*subX_list[i] for i in n_key)
-    det_root_list.append(pc.DetRootN(M_i))
-
-# calculate detroot by a moving window of min_NbChosen 
+# # evaluate NbChosen given a certain NbSample 
+# det_root_list = []
 # n_key_list = []
 # for nbc in range(min_NbChosen, NbSample+1):
-#     n_key = list(w_dict_sort.keys())[(nbc-min_NbChosen):nbc]
+#     n_key = list(w_dict_sort.keys())[0:nbc]
 #     n_key_list.append(n_key)
-#     M_i = pc.sum(subX_list[i] for i in n_key)
+#     M_i = pc.sum(w_dict_sort[i]*subX_list[i] for i in n_key)
 #     det_root_list.append(pc.DetRootN(M_i))
 
-# calculate corresponding condition number 
-# cond_list = []
-# for n_key in n_key_list:
-#     R_temp = np.copy(R_rearr)
-#     for i in range(NbSample):
-#         if i not in n_key:
-#             R_temp = np.delete(R_temp, range(i*3,(i*3+3)), axis=0)
-#     cond_list.append(np.linalg.cond(R_temp))
-# print(cond_whole, cond_list)
+# # calculate detroot by a moving window of min_NbChosen 
+# # n_key_list = []
+# # for nbc in range(min_NbChosen, NbSample+1):
+# #     n_key = list(w_dict_sort.keys())[(nbc-min_NbChosen):nbc]
+# #     n_key_list.append(n_key)
+# #     M_i = pc.sum(subX_list[i] for i in n_key)
+# #     det_root_list.append(pc.DetRootN(M_i))
 
-# # all combinations  min_NbChosen/NbSample from itertools 
-# det_root_combi = []
-# n_key_combi = []
-# print('pass here')
-# from itertools import combinations as combi 
-# for nb in combi(list(w_dict_sort.keys()), min_NbChosen): 
-#     n_key_combi.append(list(nb))
-# for n_key in n_key_combi: 
-#     M_i = pc.sum(subX_list[i] for i in n_key)
-#     det_root_combi.append(pc.DetRootN(M_i))
+# # calculate corresponding condition number 
+# # cond_list = []
+# # for n_key in n_key_list:
+# #     R_temp = np.copy(R_rearr)
+# #     for i in range(NbSample):
+# #         if i not in n_key:
+# #             R_temp = np.delete(R_temp, range(i*3,(i*3+3)), axis=0)
+# #     cond_list.append(np.linalg.cond(R_temp))
+# # print(cond_whole, cond_list)
 
-# def find_index_sublist(list, sub_list):
-#     idx_list = []
-#     for idx, l_i in enumerate(list):
-#         if l_i in sub_list:
-#             idx_list.append(idx)
+# # # all combinations  min_NbChosen/NbSample from itertools 
+# # det_root_combi = []
+# # n_key_combi = []
+# # print('pass here')
+# # from itertools import combinations as combi 
+# # for nb in combi(list(w_dict_sort.keys()), min_NbChosen): 
+# #     n_key_combi.append(list(nb))
+# # for n_key in n_key_combi: 
+# #     M_i = pc.sum(subX_list[i] for i in n_key)
+# #     det_root_combi.append(pc.DetRootN(M_i))
 
-#     return idx_list
-# idx_subList = find_index_sublist(n_key_combi, n_key_list)
-idx_subList = range(len(det_root_list))
-# NbSample_1 = 25  
-# R_b_1, NbSample_1 = get_random_reg_free_flyer(robot, NbSample_1)
-# R_rearr_1 = rearrange_rb(R_b_1, NbSample_1)
-# M_whole_1 = np.matmul(R_rearr_1.T, R_rearr_1)
-# det_root_whole_1 = pc.DetRootN(M_whole_1)
+# # def find_index_sublist(list, sub_list):
+# #     idx_list = []
+# #     for idx, l_i in enumerate(list):
+# #         if l_i in sub_list:
+# #             idx_list.append(idx)
 
-# plot
-fig, ax = plt.subplots(2)
-ratio = det_root_whole/det_root_list[-1]
+# #     return idx_list
+# # idx_subList = find_index_sublist(n_key_combi, n_key_list)
+# idx_subList = range(len(det_root_list))
+# # NbSample_1 = 25  
+# # R_b_1, NbSample_1 = get_random_reg_free_flyer(robot, NbSample_1)
+# # R_rearr_1 = rearrange_rb(R_b_1, NbSample_1)
+# # M_whole_1 = np.matmul(R_rearr_1.T, R_rearr_1)
+# # det_root_whole_1 = pc.DetRootN(M_whole_1)
 
-# # evolution of detroot along decending order
-color = 'tab:red'
-ax[0].set_xlabel('Data point index')
-ax[0].set_ylabel('m-th root of determinant of (mxm) information matrix', color=color)
-ax[0].tick_params(axis='y', labelcolor=color)
-ax[0].scatter(idx_subList, ratio*np.array(det_root_list), color=color)
-ax[0].hlines(det_root_whole, min(idx_subList), max(idx_subList))
-# ax[0].hlines(det_root_whole_1, min(idx_subList), max(idx_subList))
-# ax[0].scatter(NbSample_list, log_det, color='tab:green')
+# # plot
+# fig, ax = plt.subplots(2)
+# ratio = det_root_whole/det_root_list[-1]
+
+# # # evolution of detroot along decending order
+# color = 'tab:red'
+# ax[0].set_xlabel('Data point index')
+# ax[0].set_ylabel('m-th root of determinant of (mxm) information matrix', color=color)
+# ax[0].tick_params(axis='y', labelcolor=color)
+# ax[0].scatter(idx_subList, ratio*np.array(det_root_list), color=color)
+# ax[0].hlines(det_root_whole, min(idx_subList), max(idx_subList))
+# # ax[0].hlines(det_root_whole_1, min(idx_subList), max(idx_subList))
+# # ax[0].scatter(NbSample_list, log_det, color='tab:green')
 
 
 
-# # plot combinatrionarial det root 
-# ax_1 = ax[0].twinx()
+# # # plot combinatrionarial det root 
+# # ax_1 = ax[0].twinx()
+# # color = 'tab:blue'
+# # ax_1.set_ylabel('m-th root of determinant of (mxm) information matrix', color=color)
+# # ax_1.tick_params(axis='y', labelcolor=color)
+# # ax_1.plot(range(len(det_root_combi)), det_root_combi, color=color)
+
+# # quality of estimation
 # color = 'tab:blue'
-# ax_1.set_ylabel('m-th root of determinant of (mxm) information matrix', color=color)
-# ax_1.tick_params(axis='y', labelcolor=color)
-# ax_1.plot(range(len(det_root_combi)), det_root_combi, color=color)
+# ax[1].set_ylabel('Quality of estimation per data point', color=color)  # we already handled the x-label with ax[0]
+# ax[1].tick_params(axis='y', labelcolor=color)
+# w_list.sort(reverse=True)
+# ax[1].scatter(range(NbSample), w_list, color=color)
+# ax[1].set_yscale("log")
 
-# quality of estimation
-color = 'tab:blue'
-ax[1].set_ylabel('Quality of estimation per data point', color=color)  # we already handled the x-label with ax[0]
-ax[1].tick_params(axis='y', labelcolor=color)
-w_list.sort(reverse=True)
-ax[1].scatter(range(NbSample), w_list, color=color)
-ax[1].set_yscale("log")
-
-plt.show()
+# plt.show()
 
 
 ##### cvxpy optimization problem formulization
@@ -580,4 +593,3 @@ plt.show()
 # print("x: {}".format(sol[x]))
 # print("y: {}".format(sol[y]))
 
-NbChosen
